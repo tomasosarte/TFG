@@ -1,0 +1,34 @@
+Search & analysis of new heuristics for solving NP-HARD problems with Deep Reinforcement Learning 
+
+This thesis aims to explore and analyze new heuristics for NP-hard problems, such as TCP, using Deep 
+Reinforcement Learning Algorithms. This field have been studied before and the idea is to try to 
+expand the state of the art exploring with different approcahes. 
+
+This problem have been solved with different solutions, some of them implementing Reinforcement algorithms
+such as Reinforce or DQN variations. In order to extend this approaches the thesis is going to be 
+based on a profund reasearch of the state of the art in order to apply more advanced solutions to the problem 
+with the main objective of improving efficency, optimality and if possible, explainability over the 
+used heuristics. 
+
+When reasearch is finished, the thesis will conclude with the meticulous development of such algorithms 
+and evaluation of the results. 
+
+Competences:
+
+CCO1.1
+Avaluar la complexitat computacional d'un problema, conèixer estratègies algorísmiques que puguin dur a la seva resolució, i recomanar, desenvolupar i implementar la que garanteixi el millor rendiment d'acord amb els requisits establerts. [En profunditat]
+
+CCO1.3
+Definir, avaluar i seleccionar plataformes de desenvolupament i producció hardware i software per al desenvolupament d'aplicacions i serveis informàtics de diversa complexitat. [Una mica]
+
+CCO2.1
+Demostrar coneixement dels fonaments, dels paradigmes i de les tècniques pròpies dels sistemes intel·ligents, i analitzar, dissenyar i construir sistemes, serveis i aplicacions informàtiques que utilitzin aquestes tècniques en qualsevol àmbit d'aplicació. [Bastant]
+
+CCO2.2
+Capacitat per a adquirir, obtenir, formalitzar i representar el coneixement humà d'una forma computable per a la resolució de problemes mitjançant un sistema informàtic en qualsevol àmbit d'aplicació, particularment en els que estan relacionats amb aspectes de computació, percepció i actuació en ambients o entorns intel·ligents. [En profunditat]
+
+CCO2.4
+Demostrar coneixement i desenvolupar tècniques d'aprenentatge computacional; dissenyar i implementar aplicacions i sistemes que les utilitzin, incloent les que es dediquen a l'extracció automàtica d'informació i coneixement a partir de grans volums de dades. [Bastant]
+
+CCO3.2
+Programar considerant l'arquitectura hardware, tant en asemblador com en alt nivell. [Una mica]
