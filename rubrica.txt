@@ -1,0 +1,24 @@
+FORMULACIÓ DEL PROBLEMA
+	- Quin es el problema que cal resoldre? 
+	- Està el problema ja resolt i cal utilitzar/adaptar una solució existent o cal dissenyar-ne una nova? 
+	- Quins són els objectius del TFG? Estàn especificats clarament i suficientment? 
+	- A qui va dirigit el producte? Qui l'utilitzarà? Qui es beneficiarà del resultat del treball?
+	- El projecte te l'entitat suficient per ser un TFG i es justifica que el realitzi un enginyer tècnic?
+	
+PLANIFICACIÓ
+	- Existeix una planificació temporal preliminar del projecte?
+	- Existeix un anàlisi inicial dels costos (esforços i recursos) de la realització del projecte? 
+	- Existeix una estimació de les limitacions i/o riscos del TFG?
+	
+METEDOLOGIA I RIGOR
+	- Es descriu la metodologia de treball a seguir?
+	- Quines eines s'utilitzaràn per al seguiment del projecte?
+	- Es descriu el métode de validació dels resultats obtinguts? 
+	
+SOSTENIBILITAT I COMPROMÍS SOCIAL
+	- S'analitza el impacte social, anbiental i/o econòmic que pot tenir el projecte en l'entorn en el qual s'enmmarca? Per exemple, permetrà el projecte millorar directament o indirectament la qualitat de vida de les persones?
+	- Permetrà reduir la petjada ecològica? 
+	- Serà econòmicament viable? 
+	- Es realitza un estudi de l'estat del art sobre com es resol actualment el problema que aborda el projecte? 
+	- Es descriu com la proposta millorarà les solucions actuals en els aspectes social, econòmic i ambiental? 
+	- Es proposen indicadors per mesurar l'impacte del projecte en les tres dimensions de la sostenibilitat (mirar informe de sostenibiliat)? 
