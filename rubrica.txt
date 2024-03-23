@@ -22,3 +22,10 @@ SOSTENIBILITAT I COMPROMÍS SOCIAL
 	- Es realitza un estudi de l'estat del art sobre com es resol actualment el problema que aborda el projecte? 
 	- Es descriu com la proposta millorarà les solucions actuals en els aspectes social, econòmic i ambiental? 
 	- Es proposen indicadors per mesurar l'impacte del projecte en les tres dimensions de la sostenibilitat (mirar informe de sostenibiliat)? 
+	
+ESCRIURE CLARAMENT I CORRECTAMENT
+	- La documentació està escrita amb claredat, adreça a una audiència sense coneixement previ del projecte? 
+	- La documantació és correcta ortogràficament, sintàcticament i semànticament? Es fan servir expressions precises? 
+	- Es defineixen els nous conceptes quan cal? 
+	- Un cop acabada la documentació, s'ha fet una darrera lectura completa? 
+	
