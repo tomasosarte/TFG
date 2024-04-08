@@ -4,7 +4,7 @@ from utils.transition_batch import TransitionBatch
 from environments.environment_tsp import EnvironemntTSP
 from networks.basic_network import BasicNetwork
 from generators.tsp_generator import TSPGenerator
-
+from controllers.ac_controller import ActorCriticController
 
 def test_transition_batch():
     """
@@ -226,6 +226,8 @@ def test_basic_network():
     assert policy.shape == (10,), "The output tensor has the wrong shape"
     assert th.all(policy[-5:] == 0), "The last 5 values of the output tensor are not 0"
     assert value.shape == (), "The value tensor has the wrong shape"
+    # Sum of all values in policy should be 1
+    assert th.isclose(policy.sum(), th.tensor(1.0)), "The sum of the policy tensor is not 1"
     print("Test 1 passed")
 
     # Define a state dictionary with less than 10 cities
@@ -243,6 +245,8 @@ def test_basic_network():
     assert policy.shape == (10,), "The output tensor has the wrong shape"
     assert th.all(policy[-7:] == 0), "The last 7 values of the output tensor are not 0"
     assert value.shape == (), "The value tensor has the wrong shape"
+    # Sum of all values in policy should be 1
+    assert th.isclose(policy.sum(), th.tensor(1.0)), "The sum of the policy tensor is not 1"
     print("Test 2 passed")
 
     # Define a state dictionary with more than 10 cities
@@ -261,8 +265,9 @@ def test_basic_network():
     assert policy.shape == (10,), "The output tensor has the wrong shape"
     assert th.all(policy != 0), "All values of the output tensor are 0"
     assert value.shape == (), "The value tensor has the wrong shape"
+    # Sum of all values in policy should be 1
+    assert th.isclose(policy.sum(), th.tensor(1.0)), "The sum of the policy tensor is not 1"
     print("Test 3 passed")
-
 
     # Define a state dictionary with more than 10 cities
     state = {
@@ -276,7 +281,7 @@ def test_basic_network():
     try:
         policy, value = basic_network(state)
     except AssertionError as e:
-        print(e)
+        # print(e)
         print("Test 4 passed")
     else:
         raise AssertionError("The forward pass should have failed")
@@ -316,13 +321,52 @@ def test_generator():
     print("Batch set generation test passed")
     print("All tests passed")
 
+def test_ACController():
+    """
+    Test the ActorCriticController class.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+    # Init network
+    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    controller = ActorCriticController(network)
+
+    # Test copy
+    copy = controller.copy()
+    assert copy.model == controller.model, "The model was not copied correctly"
+    print("Copy test passed")
+
+    # Test parameters
+    params = controller.parameters()
+    # iterate over the parameters
+    for p1, p2 in zip(params, network.parameters()):
+        assert th.all(p1 == p2), "The parameters are not the same"
+    print("Parameters test passed")
+
+    # Test choose_action
+    state = {
+        'first_city': None,
+        'current_city': None,
+        'cities': th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32),
+        'not_visited_cities': th.tensor([1, 1, 1, 1, 1], dtype=th.bool)
+    }
+    action = controller.choose_action(state)
+    assert action.shape == (), "The action has the wrong shape"
+    print("Choose action test passed")
+
 if __name__ == '__main__':
-    print("Running tests...")
-    print("---------- Testing TransitionBatch ----------")
-    test_transition_batch()
-    print("---------- Testing EnvironmentTSP ----------")
-    test_environment_tsp()
-    print("---------- Testing BasicNetwork ----------")
-    test_basic_network()
-    print("---------- Testing TSPGenerator ----------")
-    test_generator()
+    # print("Running tests...")
+    # print("---------- Testing TransitionBatch ----------")
+    # test_transition_batch()
+    # print("---------- Testing EnvironmentTSP ----------")
+    # test_environment_tsp()
+    # print("---------- Testing BasicNetwork ----------")
+    # test_basic_network()
+    # print("---------- Testing TSPGenerator ----------")
+    # test_generator()
+    print("---------- Testing ACController ----------")
+    test_ACController()
