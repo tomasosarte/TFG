@@ -2,24 +2,29 @@ import torch as th
 import numpy as np
 
 from utils.transition_batch import TransitionBatch
-from environments.environment_tsp import EnvironemntTSP
+from environments.environment import Environment
+from controllers.controller import Controller
 
 class Runner:
     """
     Implements a single thread runner class.
     """
 
-    def __init__(self, controller, env: EnvironemntTSP, params={}) -> None:
+    def __init__(self, controller: Controller, env: Environment, params={}) -> None:
         
         self.controller = controller
         self.env = env
         self.episode_length = params.get('max_episode_length', 1000)
-        self.gamma = params.get('gamma', 0.99)
+        self.gamma = params.get('gamma', 1.0)
 
         # Set up current state and time step
-        self.state = None
+        self.state = self.env.reset()
         self.sum_rewards = 0
         self.time_step = 0
+
+        # Set up transition format
+        self.max_nodes_per_graph = params.get('max_nodes_per_graph', 10)
+        self.node_dimension = params.get('node_dimension', 2)
     
     def _next_step(self, done : bool = True, next_state = None) -> None:
         """
@@ -31,6 +36,7 @@ class Runner:
             self.state = self.env.reset()
         else: 
             self.time_step += 1
+
             self.state = next_state
     
     def transition_format(self) -> dict:
@@ -44,15 +50,20 @@ class Runner:
             (dict) Format transitions
         """
         return {
-            'action': ((1,), th.float32),
-            'state': ((1,), dict),
-            'next_state': ((1,), dict),
-            'reward': ((1,), th.float32),
-            'done': ((1,), th.bool),
-            'return': ((1,), th.float32)
+            'actions': ((1,), th.long),
+            'states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph * self.node_dimension,), th.float32),
+            'next_states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph * self.node_dimension,), th.float32),
+            'rewards': ((1,), th.float32),
+            'dones': ((1,), th.bool),
+            'returns': ((1,), th.float32)
         }
     
-    def _wrap_transition(self, action, state, next_state, reward, done):
+    def _wrap_transition(self, 
+                        action: th.Tensor, 
+                        state: th.Tensor, 
+                        next_state: th.Tensor, 
+                        reward: th.Tensor, 
+                        done: th.Tensor) -> dict:
         """
         Wraps the transition in a dictionary.
 
@@ -66,13 +77,14 @@ class Runner:
         Returns:
             dict: A dictionary containing the transition.
         """
+        
         return {
-            'action': action,
-            'state': state,
-            'next_state': next_state,
-            'reward': reward,
-            'done': done,
-            'return': th.zeros(1, dtype=th.float32)
+            'actions': action,
+            'states': state,
+            'next_states': next_state,
+            'rewards': reward,
+            'dones': done,
+            'returns': th.zeros(1, dtype=th.float32)
         }
     
     def run(self, n_steps : int, transition_buffer: TransitionBatch = None, trim = True, return_dict = None) -> dict:
@@ -96,6 +108,7 @@ class Runner:
             # One step in the environment
             action = self.controller.choose_action(self.state)
             state, reward, done, next_state = self.env.step(action)
+            self.sum_rewards += reward
             my_transition_buffer.add(self._wrap_transition(action, self.state, next_state, reward, done))
             # Compute discounted returns if episode is done or max_steps is reached
             if self.env.elapsed_time == self.episode_length: done = True
@@ -103,7 +116,6 @@ class Runner:
                 my_transition_buffer['returns'][t] =  my_transition_buffer['rewards'][t]
                 for i in range(t - 1, episode_start - 1, -1):
                     my_transition_buffer['returns'][i] = my_transition_buffer['rewards'][i] + self.gamma * my_transition_buffer['returns'][i + 1]
-                
                 episode_start = t + 1
             # Remember statistics and advance, potnetially initializing a new episode
             if done:
@@ -122,7 +134,7 @@ class Runner:
 
         # Return statistics (mean reward, mean length, and environment steps)
         if return_dict is None: return_dict = {}
-        return_dict.update({'buffer': transition_buffer,
+        return_dict.update({'buffer': transition_buffer.dict,
                             'episode_reward': None if len(episode_rewards) == 0 else np.mean(episode_rewards),
                             'episode_length': None if len(episode_lengths) == 0 else np.mean(episode_lengths),
                             'env_steps': time})
@@ -143,12 +155,3 @@ class Runner:
         """
 
         return self.run(0, transition_buffer, trim, return_dict)
-
-
-def test_runner():
-    env = EnvironemntTSP(10)
-    controller = None
-    runner = Runner(controller, env)
-    runner.run(10)
-    runner.run_episode()
-    print("Runner test passed.")

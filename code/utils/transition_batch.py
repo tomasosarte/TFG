@@ -27,11 +27,7 @@ class TransitionBatch:
         self.batch_size = batch_size
         self.dict = {}
         for key, spec in transition_format.items():
-            if spec[1] is dict:
-                # Fill the dictionary with a list of empty dictionaries
-                self.dict[key] = [{} for _ in range(max_size)]
-            else:
-                self.dict[key] = th.zeros([max_size, *spec[0]], dtype=spec[1])
+            self.dict[key] = th.zeros([max_size, *spec[0]], dtype=spec[1])
         
     def _clone_empty_batch(self, max_size: int = None, batch_size: int = None):
         """ 
@@ -161,10 +157,9 @@ class TransitionBatch:
         # Add all data in the dict
         self.lock.acquire()
         try:
-            idx = None
+            idx = th.LongTensor([(self.first + self.size) % self.max_size])
             n = 1
             for k, v in transition.items():
-                if idx is None: idx = th.LongTensor([(self.first + self.size) % self.max_size])
                 self.dict[k][idx] = v
             # Increase the size (and handle overflow)
             self.size += n

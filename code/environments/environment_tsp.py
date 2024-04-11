@@ -6,7 +6,7 @@ class EnvironemntTSP(Environment):
     This class is used to represent the enviornment of a TSP instance.
     """
 
-    def __init__(self, cities: th.Tensor):
+    def __init__(self, cities: th.Tensor, max_nodes_per_graph: int, node_dimension: int = 2):
         """
         Constructor for the TSP environment class.
         
@@ -18,18 +18,29 @@ class EnvironemntTSP(Environment):
         Returns:
             None
         """
-        assert cities.shape[1] == 2, "The cities tensor must have shape (n, 2)"
+        # Check the shape of the cities tensor
+        assert cities.shape[1] == node_dimension, "The cities tensor must have shape (n, 2)"
+
+        # Init of Environment class
+        super().__init__()
+
         # The number of cities in the TSP instance and the cities themselves
         self.n_cities = cities.shape[0]
         self.cities = cities
+
+        # The flat cities tensor extended to the maximum number of nodes per graph
+        self.flat_cities = th.zeros(max_nodes_per_graph * node_dimension)
+        self.flat_cities[:self.n_cities * node_dimension] = cities.view(-1)
+
         # The current and previous city that the agent is at and the first city that the agent visited
-        self.current_city = None
-        self.first_city = None
-        self.previous_city = None
-        # Tensor of booleans indicating which cities have not been visited with a 1 and which have been visited with a 0
-        self.not_visited_cities = th.ones(self.n_cities, dtype=th.bool)
-        # Elapsed time in the environment
-        self.elapsed_time = 0
+        self.current_city = -1
+        self.first_city = -1
+        self.previous_city = -1
+
+        # Tensor of booleans indicating which cities have not been visited with a 1 and which have been visited with a 0 extended to the maximum number of nodes per graph
+        self.max_nodes_per_graph = max_nodes_per_graph
+        self.not_visited_cities = th.zeros(max_nodes_per_graph, dtype=th.bool)
+        self.not_visited_cities[:self.n_cities] = True   
 
     def _distance(self, city1: int, city2: int):
         """
@@ -65,16 +76,19 @@ class EnvironemntTSP(Environment):
             None
         
         Returns:
-            dict: A dictionary representing the state of the environment.
+            th.Tensor: A tensor representing the state of the environment.
         """
-        return {
-            'current_city': self.current_city,
-            'first_city': self.first_city,
-            'previous_city': self.previous_city,
-            'not_visited_cities': self.not_visited_cities,
-            'cities': self.cities,
-        }
-
+        # return {
+        #     'current_city': self.current_city,
+        #     'first_city': self.first_city,
+        #     'previous_city': self.previous_city,
+        #     'not_visited_cities': self.not_visited_cities,
+        #     'cities': self.cities,
+        # }
+        info = th.Tensor([self.n_cities, self.current_city, self.first_city, self.previous_city])
+        state = th.cat((info, self.not_visited_cities, self.flat_cities)).unsqueeze(0)
+        return state
+    
     def reset(self) -> dict:
         """
         Resets the environment to the starting state.
@@ -85,10 +99,12 @@ class EnvironemntTSP(Environment):
         Returns:
             th.Tensor: The state of the environment after resetting.
         """
-        self.current_city = None
-        self.first_city = None
-        self.previous_city = None
-        self.not_visited_cities = th.ones(self.n_cities, dtype=th.bool)
+        super().reset()
+        self.current_city = -1
+        self.first_city = -1
+        self.previous_city = -1
+        self.not_visited_cities = th.zeros(self.max_nodes_per_graph, dtype=th.bool)
+        self.not_visited_cities[:self.n_cities] = True
         return self._get_state()
         
     def step(self, action: int):
@@ -106,7 +122,7 @@ class EnvironemntTSP(Environment):
         """
         
         state = self._get_state()
-        if self.first_city is None:
+        if self.first_city == -1:
             self.first_city = action
             self.current_city = action
             self.not_visited_cities[action] = False

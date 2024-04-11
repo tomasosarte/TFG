@@ -15,7 +15,8 @@ class Environment:
         Returns:
             None
         """
-        pass
+        # Elapsed time in the environment
+        self.elapsed_time = 0
 
     def reset(self) -> dict:
         """
@@ -27,7 +28,7 @@ class Environment:
         Returns:
             None
         """
-        pass 
+        self.elapsed_time = 0
         
     def step(self, action: int):
         """

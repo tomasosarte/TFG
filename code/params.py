@@ -29,4 +29,8 @@ def default_params():
             # Actor-critic parameters  
             'value_loss_param': 0.1,          # governs the relative impact of the value relative to policy loss
             'offpolicy_iterations': 0,        # how many off-policy iterations are performed per training step
+
+            # Environment parameters
+            'max_nodes_per_graph': 10,        # maximum number of nodes in a graph
+            'node_dimension': 2,              # dimension of the node features
            }

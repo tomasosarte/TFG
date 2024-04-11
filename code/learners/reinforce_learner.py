@@ -28,6 +28,7 @@ class ReinforceLearner:
         self.all_parameters = list(model.parameters())
         self.compute_next_val = False  # whether the next state's value is computed
         self.old_pi = None  # this variable can be used for your PPO implementation
+        self.max_cities = params.get('max_cities', 20)
 
     def set_controller(self, controller) -> None:
         """
@@ -81,7 +82,7 @@ class ReinforceLearner:
             Policy loss.
         """
         return -(advantages.detach() * pi.log()).mean()
-        
+
     def train(self, batch) -> None:
         """
         Trains the model using the batch of data.
@@ -98,6 +99,7 @@ class ReinforceLearner:
         self.old_pi, loss_sum = None, 0.0
         for _ in range(1 + self.offpolicy_iterations):
             # Compute model output for the batch.
+            print("Batch: ", batch['states'])
             policies, values = self.model(batch['states']) # Compute policy and values
             _, next_values = self.model(batch['next_states'])[:, -1].unsqueeze(dim=-1) if self.compute_next_val else None
             # Combine policy and value loss
