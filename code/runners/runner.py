@@ -14,7 +14,7 @@ class Runner:
         
         self.controller = controller
         self.env = env
-        self.episode_length = params.get('max_episode_length', 1000)
+        self.episode_length = params.get('max_episode_length', 10)
         self.gamma = params.get('gamma', 1.0)
 
         # Set up current state and time step
@@ -51,8 +51,8 @@ class Runner:
         """
         return {
             'actions': ((1,), th.long),
-            'states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph * self.node_dimension,), th.float32),
-            'next_states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph * self.node_dimension,), th.float32),
+            'states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph*self.node_dimension,), th.float32),
+            'next_states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph*self.node_dimension,), th.float32),
             'rewards': ((1,), th.float32),
             'dones': ((1,), th.bool),
             'returns': ((1,), th.float32)
@@ -105,8 +105,8 @@ class Runner:
         time, episode_start, episode_lengths, episode_rewards = 0, 0, [], []
         max_steps = n_steps if n_steps > 0 else self.episode_length
         for t in range(max_steps):
-            # One step in the environment
-            action = self.controller.choose_action(self.state)
+            # One step in the 
+            action = self.controller.choose_action(self.state.unsqueeze(0))
             state, reward, done, next_state = self.env.step(action)
             self.sum_rewards += reward
             my_transition_buffer.add(self._wrap_transition(action, self.state, next_state, reward, done))

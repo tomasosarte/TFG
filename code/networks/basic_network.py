@@ -26,7 +26,7 @@ class BasicNetwork(nn.Module):
         self.embedding_dimension = embedding_dimension
 
         # Input symbol for first step the size of the node dimension
-        self.symbol = th.ones(node_dimension, dtype=th.float32)*(-1)
+        self.symbol = th.ones(1, node_dimension, dtype=th.float32)*(-1)
 
         # To map input node features to the embedding space
         self.initial_embedding = nn.Linear(node_dimension, embedding_dimension)
@@ -38,8 +38,72 @@ class BasicNetwork(nn.Module):
             nn.Linear(512, 128), nn.ReLU(),
             nn.Linear(128, max_nodes_per_graph + 1)
         )
+    
+    # def forward(self, state_batch: dict) -> th.Tensor:
+    #     """
+    #     Forward pass of the network. This function takes a state th.Tensor as input and returns the output of the network.
+        
+    #     Environment tsp conditions:
+    #         - Cities are common to all states in the batch
+    #     Args:
+    #         state (th.Tensor): A tensor containing the state of the agent in the environment.
 
-    def forward(self, state: th.Tensor) -> th.Tensor:
+    #     Returns:
+    #         th.Tensor: The output of the network.
+    #     """
+        
+    #     first_cities = state_batch['first_cities'] # batch tensor
+    #     current_cities = state_batch['current_cities'] # batch tensor
+    #     cities = state_batch['cities'] # single tensor
+    #     visited_cities = state_batch['visited_cities'] # batch tensor
+    #     batch_size = first_cities.shape[0]
+    #     num_cities = cities.shape[0]
+
+    #     assert num_cities <= self.max_nodes_per_graph, "The number of cities in the graph is greater than the maximum number of nodes per graph"
+
+    #     # Get the cities and symbol embeddings
+    #     embedded_cities = self.initial_embedding(cities)
+    #     symbol_embedding = self.initial_embedding(self.symbol)
+    #     embeddings = th.cat((embedded_cities, symbol_embedding), dim=0)
+
+    #     # Get the embedded first and current cities
+    #     embedded_first_cities = embeddings[first_cities + 1]
+    #     embedded_current_cities = embeddings[current_cities + 1]
+
+    #     # If n_cities < max_nodes_per_graph, pad the input tensor with zeros and the not visited cities tensor
+    #     extra_cities = self.max_nodes_per_graph - num_cities
+    #     if extra_cities > 0:
+    #         padding_tensor = th.zeros(extra_cities, self.embedding_dimension)
+    #         embedded_cities = th.cat((embedded_cities, padding_tensor), dim=0)
+
+    #         padding_bool = th.zeros(batch_size, extra_cities, dtype=th.bool)
+    #         visited_cities = th.cat((visited_cities, padding_bool), dim=1)
+
+
+    #     # Reshape to concatenate the embedded first city, embedded current city and the cities tensor
+    #     embedded_cities = embedded_cities.unsqueeze(0).expand(batch_size, -1, -1)   
+    #     current_and_first_cities = th.cat((embedded_first_cities.unsqueeze(1), embedded_current_cities.unsqueeze(1)), dim=1)
+
+    #     # Cat the embedded first city, embedded current city and the cities tensor
+    #     input_tensor = th.cat((current_and_first_cities, embedded_cities), dim=1)
+
+    #     # Reshape the input tensor a 2D tensor with shape (batch_size, (max_nodes_per_graph + 2) * embedding_dimension)
+    #     input_tensor = input_tensor.view(batch_size, -1)
+
+    #     # Forward pass
+    #     output = self.layers(input_tensor)
+    #     # Output shape (batch_size, max_nodes_per_graph + 1)
+    #     output_masked = output[:, :-1].masked_fill(~visited_cities, -float('inf'))
+
+    #     # Transform the output into probabilities
+    #     output_probabilities = th.softmax(output_masked, dim=1)
+
+    #     # Get value
+    #     value = output[:, -1]
+
+    #     return output_probabilities, value
+
+    def forward(self, state_batch: th.Tensor) -> th.Tensor:
         """
         Forward pass of the network. This function takes a state th.Tensor as input and returns the output of the network.
 
@@ -49,111 +113,52 @@ class BasicNetwork(nn.Module):
         Returns:
             th.Tensor: The output of the network.
         """
-        # Squeeze the state tensor
-        state = state.squeeze()
-        print(state)
-        print('-'*50)
-        # Check the shape of the state tensor
-        num_cities = state[0].type(th.int)
+        num_cities = state_batch[0][0].type(th.int32)
+        batch_size = state_batch.shape[0]
+        state_shape = state_batch.shape[1]
         assert num_cities <= self.max_nodes_per_graph, "The number of cities in the graph is greater than the maximum number of nodes per graph"
-        assert state.shape[0] == (4 + self.max_nodes_per_graph + self.node_dimension*self.max_nodes_per_graph), "The state tensor has the wrong shape"
+        assert state_shape == (4 + self.max_nodes_per_graph + self.node_dimension*self.max_nodes_per_graph), "The state tensor has the wrong shape"
 
-        current_city = state[1].type(th.int)
-        first_city = state[2].type(th.int)
-        previous_city = state[3].type(th.int)
-        not_visited_cities = state[4:4+num_cities].type(th.bool)
-        cities = state[4+self.max_nodes_per_graph:4+self.max_nodes_per_graph + self.node_dimension*num_cities].view(num_cities, self.node_dimension)
+        current_cities = state_batch[:, 1].type(th.int64)
+        first_cities = state_batch[:, 2].type(th.int64)
 
-        # Get the embeddig of the first and the current city
-        if first_city == -1:
-            embedded_first_city = self.initial_embedding(self.symbol)
-            embedded_current_city = self.initial_embedding(self.symbol)
-        else:
-            first_city_coords = cities[first_city]
-            current_city_coords = cities[current_city]
-            embedded_first_city = self.initial_embedding(first_city_coords)
-            embedded_current_city = self.initial_embedding(current_city_coords)
+        start_cts = 4 + self.max_nodes_per_graph
+        visited_cities = state_batch[:, 4:start_cts].type(th.bool)
+        cities = state_batch[0][start_cts: start_cts + num_cities*self.node_dimension].view(-1, 2)
 
-        # Embedd the cities tensor
+        # Get embeddings
+        embedded_symbol = self.initial_embedding(self.symbol)
         embedded_cities = self.initial_embedding(cities)
+        embeddings = th.cat((embedded_cities, embedded_symbol), dim=0)
 
-        # Cat the embedded first city, embedded current city and the cities tensor
-        input_tensor = th.cat((embedded_first_city.unsqueeze(0), embedded_current_city.unsqueeze(0), embedded_cities))
+        # Get first city and current city index in the embeddings
+        first_cities_index = first_cities + 1
+        current_cities_index = current_cities + 1
+
+        # Get the embedded first and current cities
+        embedded_first_cities = embeddings[first_cities_index]
+        embedded_current_cities = embeddings[current_cities_index]
 
         # If n_cities < max_nodes_per_graph, pad the input tensor with zeros and the not visited cities tensor
-        if num_cities < self.max_nodes_per_graph:
-            input_tensor = th.cat((input_tensor, th.zeros(self.max_nodes_per_graph - num_cities, self.embedding_dimension)), dim=0)
-            not_visited_cities = th.cat((not_visited_cities, th.zeros(self.max_nodes_per_graph - num_cities, dtype=th.bool)), dim=0)
+        pad = self.max_nodes_per_graph - num_cities
+        # Get pad embedded symbols and concat them with cities
+        padding_tensor = embedded_symbol.expand(pad, -1).expand(batch_size, -1, -1)
+        padded_embedded_cities = th.cat((embedded_cities.unsqueeze(0).expand(batch_size, -1, -1), padding_tensor), dim=1)
 
-        # Reshape the input tensor to be a 1D tensor
-        input_tensor = input_tensor.view(-1)
-
+        # Get input tensor
+        input_tensor = th.cat((embedded_first_cities.unsqueeze(1), embedded_current_cities.unsqueeze(1), padded_embedded_cities), dim=1)
+        input_tensor = input_tensor.view(batch_size, -1)
+        
         # Forward pass
         output = self.layers(input_tensor)
 
-        # Pass the mask that represents not visited cities to the output tensor. Giving them 0 probaility of being selected
-        output_masked = output[:-1].masked_fill(~not_visited_cities, -float('inf'))
+        # Pass the mask that represents visited cities to the output tensor. Giving them 0 probaility of being selected
+        output_masked = output[:, :-1].masked_fill(visited_cities, -float('inf'))
 
         # Transform the output into probabilities
-        output_probabilities = th.softmax(output_masked, dim=0)
+        output_probabilities = th.softmax(output_masked, dim=1)
 
         # Get value
-        value = output[-1]
+        value = output[:, -1]
 
         return output_probabilities, value
-    
-    # def forward(self, state: dict) -> th.Tensor:
-    #     """
-    #     Forward pass of the network. This function takes a state dictionary as input and returns the output of the network.
-
-    #     Args:
-    #         state (dict): A dictionary containing the state of the agent in the environment.
-
-    #     Returns:
-    #         th.Tensor: The output of the network.
-    #     """
-    #     # Get the embeddin of the first and the current city
-    #     if state['first_city'] == None:
-    #         embedded_first_city = self.initial_embedding(self.symbol)
-    #         embedded_current_city = self.initial_embedding(self.symbol)
-    #     else:
-    #         first_city = state['cities'][state['first_city'].type(th.int)]
-    #         current_city = state['cities'][state['current_city'].type(th.int)]
-    #         embedded_first_city = self.initial_embedding(first_city)
-    #         embedded_current_city = self.initial_embedding(current_city)
-
-    #     # Check how many cities there are in the current graph and the node dimension
-    #     n_cities = state['cities'].shape[0]
-    #     node_dimension = state['cities'].shape[1]
-
-    #     assert n_cities <= self.max_nodes_per_graph, "The number of cities in the graph is greater than the maximum number of nodes per graph"
-    #     assert node_dimension == self.node_dimension, "The node dimension of the cities tensor is different from the node dimension of the network"
-
-    #     # Embedd the cities tensor
-    #     embedded_cities = self.initial_embedding(state['cities'])
-
-    #     # Cat the embedded first city, embedded current city and the cities tensor
-    #     input_tensor = th.cat((embedded_first_city.unsqueeze(0), embedded_current_city.unsqueeze(0), embedded_cities))
-
-    #     # If n_cities < max_nodes_per_graph, pad the input tensor with zeros and the not visited cities tensor
-    #     not_visited_cities = state['not_visited_cities']
-    #     if n_cities < self.max_nodes_per_graph:
-    #         input_tensor = th.cat((input_tensor, th.zeros(self.max_nodes_per_graph - n_cities, self.embedding_dimension)), dim=0)
-    #         not_visited_cities = th.cat((state['not_visited_cities'], th.zeros(self.max_nodes_per_graph - n_cities, dtype=th.bool)), dim=0)
-
-    #     # Reshape the input tensor to be a 1D tensor
-    #     input_tensor = input_tensor.view(-1)
-
-    #     # Forward pass
-    #     output = self.layers(input_tensor)
-
-    #     # Pass the mask that represents not visited cities to the output tensor. Giving them 0 probaility of being selected
-    #     output_masked = output[:-1].masked_fill(~not_visited_cities, -float('inf'))
-
-    #     # Transform the output into probabilities
-    #     output_probabilities = th.softmax(output_masked, dim=0)
-
-    #     # Get value
-    #     value = output[-1]
-
-    #     return output_probabilities, value

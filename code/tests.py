@@ -2,13 +2,14 @@ import torch as th
 from torch import tensor
 
 from utils.transition_batch import TransitionBatch
-from environments.environment_tsp import EnvironemntTSP
+from environments.environment_tsp import EnviornmentTSP
 from networks.basic_network import BasicNetwork
 from generators.tsp_generator import TSPGenerator
 from controllers.ac_controller import ActorCriticController
 from runners.runner import Runner
 from params import default_params
 from learners.reinforce_learner import ReinforceLearner
+from experiments.experiment import ACExperiment
 
 
 def test_transition_batch():
@@ -57,28 +58,36 @@ def test_transition_batch():
         """
         return {
             'actions': ((1,), th.long),
-            'states': ((4 + 10 + 2 * 10,), th.float32),
-            'next_states': ((4 + 10 + 2 * 10,), th.float32),
+            'states': ((34,), th.float32),
+            'next_states': ((34,), th.float32),
             'rewards': ((1,), th.float32),
             'dones': ((1,), th.bool),
             'returns': ((1,), th.float32)
         }
 
     def test_add(tb: TransitionBatch, first:int, size:int, wrapped_transition: dict, index:int) -> None:
+        # assert tb.first == first, "The first attribute is not correct"
+        # assert tb.size == size, "The size of the TransitionBatch is not correct"
+        # assert tb.dict['states'][index] == wrapped_transition['states'], "State is not saved correctly"
+        # assert tb.dict['next_states'][index] == wrapped_transition['next_states'], "Next state is not saved correctly"
+        # assert tb.dict['actions'][index] == wrapped_transition['actions'], "Action is not saved correctly"
+        # assert tb.dict['rewards'][index] == wrapped_transition['rewards'], "Reward is not saved correctly"
+        # assert tb.dict['dones'][index] == wrapped_transition['dones'], "Done is not saved correctly"
+        # assert tb.dict['returns'][index] == wrapped_transition['returns'], "Return is not saved correctly"
+
         assert tb.first == first, "The first attribute is not correct"
         assert tb.size == size, "The size of the TransitionBatch is not correct"
-        assert (tb.dict['states'][index] == wrapped_transition['states']).all(), "State is not saved correctly"
-        assert (tb.dict['next_states'][index] == wrapped_transition['next_states']).all(), "Next state is not saved correctly"
-        assert (tb.dict['actions'][index] == wrapped_transition['actions']).all(), "Action is not saved correctly"
-        assert (tb.dict['rewards'][index] == wrapped_transition['rewards']).all(), "Reward is not saved correctly"
-        assert (tb.dict['dones'][index] == wrapped_transition['dones']).all(), "Done is not saved correctly"
-        assert (tb.dict['returns'][index] == wrapped_transition['returns']).all(), "Return is not saved correctly"
-
+        assert th.all(tb.dict['states'][index] == wrapped_transition['states']), "State is not saved correctly"
+        assert th.all(tb.dict['next_states'][index] == wrapped_transition['next_states']), "Next state is not saved correctly"
+        assert th.all(tb.dict['actions'][index] == wrapped_transition['actions']), "Action is not saved correctly"
+        assert th.all(tb.dict['rewards'][index] == wrapped_transition['rewards']), "Reward is not saved correctly"
+        assert th.all(tb.dict['dones'][index] == wrapped_transition['dones']), "Done is not saved correctly"
+        assert th.all(tb.dict['returns'][index] == wrapped_transition['returns']), "Return is not saved correctly"
     # -------------------------- TEST ADD ---------------------------
 
     # Create a TransitionBatch and enviornment
     tb = TransitionBatch(max_size=2, transition_format=transition_format(), batch_size=1)
-    env = EnvironemntTSP(th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32), max_nodes_per_graph=10)
+    env = EnviornmentTSP(th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32), max_nodes_per_graph=10)
 
     # Reset the environment and make step
     env.reset()
@@ -111,7 +120,7 @@ def test_transition_batch():
 
     # Create a TransitionBatch and enviornment
     tb = TransitionBatch(max_size=2, transition_format=transition_format())
-    env = EnvironemntTSP(th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32), max_nodes_per_graph=10)
+    env = EnviornmentTSP(th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32))
 
     # Reset the environment and make step
     env.reset()
@@ -140,73 +149,80 @@ def test_environment_tsp():
     Returns:
         None    
     """
+
+    def test_state(state: th.Tensor, 
+                   current_city_value: int, 
+                   first_city_value: int, 
+                   previous_city_value: int, 
+                   visited_cities: th.Tensor, 
+                   cities: th.Tensor) -> None:
+        """
+        Test the state of the environment.
+
+        Args:
+            state (th.Tensor): The state of the environment.
+            current_city_value (int): The value of the current city.
+            first_city_value (int): The value of the first city.
+            previous_city_value (int): The value of the previous city.
+            visited_cities (th.Tensor): The value of the not visited cities tensor.
+            cities (th.Tensor): The value of the cities tensor.
+        
+        Returns:
+            None
+        """
+        # Dictionary test
+        # assert state['current_cities'] == current_city_value, "The current city is not correct"
+        # assert state['first_cities'] == first_city_value, "The first city is not correct"
+        # assert state['previous_cities'] == previous_city_value, "The previous city is not correct"
+        # assert th.all(state['visited_cities'] == visited_cities), "The visited cities tensor is not correct"
+        # assert th.all(state['cities'] == cities), "The cities tensor is not correct"
+
+        # Tensor test
+        assert state[2] == current_city_value, "The current city is not correct"
+        assert state[1] == first_city_value, "The first city is not correct"
+        assert state[3] == previous_city_value, "The previous city is not correct"
+        assert th.all(state[4:9] == visited_cities), "The visited cities tensor is not correct"
+        assert th.all(state[14:24].view(-1, 2) == cities), "The cities tensor is not correct"
+
     cities = th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32)
-    env = EnvironemntTSP(cities, max_nodes_per_graph=10)
+    env = EnviornmentTSP(cities)
 
     state = env.reset()
-    assert state[0][0] == 5, "The number of cities is not 5"
-    assert state[0][1] == -1, "The current city must be -1"
-    assert state[0][2] == -1, "The first city must be -1"
-    assert state[0][3] == -1, "The previous city must be -1"
-    assert state[0][4:9].sum() == 5, "No cities must be visited"
+    test_state(state, -1, -1, -1, th.tensor([0, 0, 0, 0, 0], dtype=th.bool), cities)
     print("Reset test passed")
 
     _, reward, done, next_state = env.step(0)
-    assert next_state[0][0] == 5, "The number of cities is not 5"
-    assert next_state[0][1] == 0, "The current city must be 0"
-    assert next_state[0][2] == 0, "The first city must be 0"
-    assert next_state[0][3] == -1, "The previous city must be -1"
-    assert next_state[0][4:9].sum() == 4, "One city must be visited"
+    test_state(next_state, 0, 0, -1, th.tensor([1, 0, 0, 0, 0], dtype=th.bool), cities)
     assert reward == 0, "The reward must be 0"
     assert done == False, "The episode is not done"
     print("Step 1 test passed")
 
     _, reward, done, next_state = env.step(1)
-    assert next_state[0][0] == 5, "The number of cities is not 5"
-    assert next_state[0][1] == 1, "The current city must be 1"
-    assert next_state[0][2] == 0, "The first city must be 0"
-    assert next_state[0][3] == 0, "The previous city must be 0"
-    assert next_state[0][4:9].sum() == 3, "Two cities must be visited"
+    test_state(next_state, 1, 0, 0, th.tensor([1, 1, 0, 0, 0], dtype=th.bool), cities)
     assert reward == -1.4142135, "The reward must be -1.4142135"
     assert done == False, "The episode is not done"
     print("Step 2 test passed")
     
     _, reward, done, next_state = env.step(2)
-    assert next_state[0][0] == 5, "The number of cities is not 5"
-    assert next_state[0][1] == 2, "The current city must be 2"
-    assert next_state[0][2] == 0, "The first city must be 0"
-    assert next_state[0][3] == 1, "The previous city must be 1"
-    assert next_state[0][4:9].sum() == 2, "Three cities must be visited"
+    test_state(next_state, 2, 0, 1, th.tensor([1, 1, 1, 0, 0], dtype=th.bool), cities)
     assert reward == -1.4142135, "The reward must be -1.4142135"
     assert done == False, "The episode is not done"
     print("Step 3 test passed")
     
     _, reward, done, next_state = env.step(3)
-    assert next_state[0][0] == 5, "The number of cities is not 5"
-    assert next_state[0][1] == 3, "The current city must be 3"
-    assert next_state[0][2] == 0, "The first city must be 0"
-    assert next_state[0][3] == 2, "The previous city must be 2"
-    assert next_state[0][4:9].sum() == 1, "Four cities must be visited"
+    test_state(next_state, 3, 0, 2, th.tensor([1, 1, 1, 1, 0], dtype=th.bool), cities)
     assert reward == -1.4142135, "The reward must be -1.4142135"
     assert done == False, "The episode is not done"
     print("Step 4 test passed")
     
     _, reward, done, next_state = env.step(4)
-    assert next_state[0][0] == 5, "The number of cities is not 5"
-    assert next_state[0][1] == 4, "The current city must be 4"
-    assert next_state[0][2] == 0, "The first city must be 0"
-    assert next_state[0][3] == 3, "The previous city must be 3"
-    assert next_state[0][4:9].sum() == 0, "All cities must be visited"
+    test_state(next_state, 4, 0, 3, th.tensor([1, 1, 1, 1, 1], dtype=th.bool), cities)
     assert reward == -1.4142135, "The reward must be -1.4142135"
     assert done == True, "The episode is done"
     print("Step 5 test passed")
     
     state = env.reset()
-    assert state[0][0] == 5, "The number of cities is not 5"
-    assert state[0][1] == -1, "The current city must be -1"
-    assert state[0][2] == -1, "The first city must be -1"
-    assert state[0][3] == -1, "The previous city must be -1"
-    assert state[0][4:9].sum() == 5, "No cities must be visited"
+    test_state(state, -1, -1, -1, th.tensor([0, 0, 0, 0, 0], dtype=th.bool), cities)
     print("Reset test passed again")
     print("All tests passed")
 
@@ -221,7 +237,14 @@ def test_basic_network():
         None
     """
 
-    def get_state(n_cities: int, current_city: int, first_city: int, previous_city: int, not_visited_cities: th.Tensor, cities: th.Tensor) -> th.Tensor:
+    def get_batch(n_cities: th.Tensor, 
+                current_city: th.Tensor, 
+                first_city: th.Tensor, 
+                previous_city: th.Tensor, 
+                visited_cities: th.Tensor, 
+                cities: th.Tensor,
+                max_nodes_per_graph: int = 10,
+                ) -> th.Tensor:
         """
         Returns the current state of the environment.
         
@@ -230,89 +253,132 @@ def test_basic_network():
             current_city (int): The index of the current city.
             first_city (int): The index of the first city.
             previous_city (int): The index of the previous city.
-            not_visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
+            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
             cities (th.Tensor): A tensor containing the coordinates of the cities.
         
         Returns:
             th.Tensor: A tensor representing the state of the environment.
         """
-        info = th.Tensor([n_cities, current_city, first_city, previous_city])
-        state = th.cat((info, not_visited_cities, cities.view(-1))).unsqueeze(0)
+        # Metadata
+        metadata = th.cat((n_cities, current_city, first_city, previous_city), dim=1)
+
+        # Flat cities tensor
+        batch_size = n_cities.shape[0]
+        cities = cities.unsqueeze(0).expand(batch_size, -1, -1).view(batch_size, -1)
+
+        # Pad visited cities tensor
+        if n_cities[0] < max_nodes_per_graph:
+            padding = th.ones(batch_size, max_nodes_per_graph - n_cities[0])
+            visited_cities = th.cat((visited_cities, padding), dim=1)
+
+            padding = th.zeros(batch_size, (max_nodes_per_graph - n_cities[0])*2)
+            cities = th.cat((cities, padding), dim=1)
+
+        # Concatenate all tensors
+        state = th.cat((metadata, visited_cities, cities), dim=1)
         return state
     
+    def get_state_dict(first_city: th.Tensor, current_city: th.Tensor, visited_cities: th.Tensor, cities: th.Tensor) -> dict:
+        """
+        Returns the current state of the env in a dictionary.
+
+        Args:
+            first_city (int): The index of the first city.
+            current_city (int): The index of the current city.
+            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
+            cities (th.Tensor): A tensor containing the coordinates of the cities.
+
+        Returns:
+            dict: A dictionary containing the state of the environment.
+        """
+
+        return {
+            'first_cities': first_city,
+            'current_cities': current_city,
+            'visited_cities': visited_cities,
+            'cities': cities
+        }
+    
+    def test_output(pol_shape, start_mask, value_shape, value: th.Tensor, policy: th.Tensor) -> None:
+        assert policy.shape == pol_shape, "The output tensor has the wrong shape"
+        pol_shape_1 = policy.shape[1]
+        batch_size = float(policy.shape[0])
+        if pol_shape_1 > -start_mask: assert th.all(policy[0][start_mask:] == 0), f"The last {-start_mask} values of the output tensor are not 0"
+        assert value.shape == value_shape, "The value tensor has the wrong shape"
+        assert th.isclose(policy.sum(), th.tensor(batch_size)), "The sum of the policy tensor is not 1"
+        
+    max_nodes_per_graph = 10
     # Create a BasicNetwork object
-    basic_network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    basic_network = BasicNetwork(max_nodes_per_graph = max_nodes_per_graph, node_dimension = 2, embedding_dimension = 4)
+
+    # Get a state dict
+    # current_city = th.tensor([-1], dtype=th.int32)
+    # first_city = th.tensor([-1], dtype=th.int32)
+    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
+    # visited_cities = th.tensor([[1, 1, 1, 1, 1]], dtype=th.bool)
+    # state = get_state_dict(first_city, current_city, visited_cities, cities)
 
     # Get a state tensor
-    n_cities = 5
-    current_city = -1
-    first_city = -1
-    previous_city = -1
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
-    cities = th.cat((cities, th.zeros(5, 2)), dim=0)
-    not_visited_cities = th.tensor([1, 1, 1, 1, 1], dtype=th.bool)
-    not_visited_cities = th.cat((not_visited_cities, th.zeros(5, dtype=th.bool)), dim=0)
-    state = get_state(n_cities, current_city, first_city, previous_city, not_visited_cities, cities)
-
+    visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph)
+    
     # Forward pass
     policy, value = basic_network(state)
-
-    # Output should have shape [10] and 5 last values should be 0
-    assert policy.shape == (10,), "The output tensor has the wrong shape"
-    assert th.all(policy[-5:] == 0), "The last 5 values of the output tensor are not 0"
-    assert value.shape == (), "The value tensor has the wrong shape"
-    # Sum of all values in policy should be 1
-    assert th.isclose(policy.sum(), th.tensor(1.0)), "The sum of the policy tensor is not 1"
+    test_output((1, 10), -5, (1,), value, policy)
     print("Test 1 passed")
 
+    # Get a state dict
+    # current_city = th.tensor([0], dtype=th.int32)
+    # first_city = th.tensor([0], dtype=th.int32)
+    # cities = th.tensor([[1, 2], [3, 4], [5, 6]], dtype=th.float32)
+    # visited_cities = th.tensor([[1, 0, 0]], dtype=th.bool)
+    # state = get_state_dict(first_city, current_city, visited_cities, cities)
+
     # Get a state tensor
-    n_cities = 3
-    current_city = 0
-    first_city = 0
-    previous_city = -1
+    n_cities, current_city, first_city, previous_city = th.tensor([[3]]), th.tensor([[0]]), th.tensor([[0]]), th.tensor([[0]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6]], dtype=th.float32)
-    cities = th.cat((cities, th.zeros(7, 2)), dim=0)
-    not_visited_cities = th.tensor([0, 1, 1], dtype=th.bool)
-    not_visited_cities = th.cat((not_visited_cities, th.zeros(7, dtype=th.bool)), dim=0)
-    state = get_state(n_cities, current_city, first_city, previous_city, not_visited_cities, cities)
+    visited_cities = th.tensor([[1, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph)
 
     # Forward pass
     policy, value = basic_network(state)
-
-    # Output should have shape [10] and 7 last values should be 0. Also the first value should be 0
-    assert policy.shape == (10,), "The output tensor has the wrong shape"
-    assert th.all(policy[-7:] == 0), "The last 7 values of the output tensor are not 0"
-    assert value.shape == (), "The value tensor has the wrong shape"
-    # Sum of all values in policy should be 1
-    assert th.isclose(policy.sum(), th.tensor(1.0)), "The sum of the policy tensor is not 1"
+    test_output((1, 10), -7, (1,), value, policy)
     print("Test 2 passed")
 
-    n_cities = 10
-    current_city = -1
-    first_city = -1
-    previous_city = -1
+    # Get a state dict
+    # current_city = th.tensor([-1], dtype=th.int32)
+    # first_city = th.tensor([-1], dtype=th.int32)
+    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20]], dtype=th.float32)
+    # visited_cities = th.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=th.bool)
+    # state = get_state_dict(first_city, current_city, visited_cities, cities)
+
+    # Get a state tensor
+    n_cities, current_city, first_city, previous_city = th.tensor([[10]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20]], dtype=th.float32)
-    not_visited_cities = th.tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype=th.bool)
-    state = get_state(n_cities, current_city, first_city, previous_city, not_visited_cities, cities)
-    
+    visited_cities = th.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph)
+
     # Forward pass
     policy, value = basic_network(state)
 
     # Output should have shape [10] and all values should be different from 0
-    assert policy.shape == (10,), "The output tensor has the wrong shape"
-    assert th.all(policy != 0), "All values of the output tensor are 0"
-    assert value.shape == (), "The value tensor has the wrong shape"
-    # Sum of all values in policy should be 1
-    assert th.isclose(policy.sum(), th.tensor(1.0)), "The sum of the policy tensor is not 1"
+    test_output((1, 10), -10, (1,), value, policy)
     print("Test 3 passed")
 
-    n_cities = 11
-    current_city = -1
-    first_city = -1
-    previous_city = -1
+    # Get a state dict
+    # current_city = th.tensor([-1], dtype=th.int32)
+    # first_city = th.tensor([-1], dtype=th.int32)
+    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20], [22, 22]], dtype=th.float32)
+    # visited_cities = th.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=th.bool)
+    # state = get_state_dict(first_city, current_city, visited_cities, cities)
+
+    # Get a state tensor
+    n_cities, current_city, first_city, previous_city = th.tensor([[11]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20], [22, 22]], dtype=th.float32)
-    not_visited_cities = th.tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype=th.bool)
-    state = get_state(n_cities, current_city, first_city, previous_city, not_visited_cities, cities)
+    visited_cities = th.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph)
 
     # Forward pass should fail
     try:
@@ -322,6 +388,24 @@ def test_basic_network():
         print("Test 4 passed")
     else:
         raise AssertionError("The forward pass should have failed")
+    
+    # Test batch of states inside the network
+    # current_city = th.tensor([-1, 0], dtype=th.int32)
+    # first_city = th.tensor([-1, 0], dtype=th.int32)
+    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
+    # visited_cities = th.tensor([[0, 0, 0, 0, 0], [1, 0, 0, 0, 0]], dtype=th.bool)
+    # batch = get_state_dict(first_city, current_city, visited_cities, cities)
+
+    # Get a state tensor
+    n_cities, current_city, first_city, previous_city = th.tensor([[5], [3]]), th.tensor([[-1], [0]]), th.tensor([[-1], [0]]), th.tensor([[-1], [0]])
+    cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
+    visited_cities = th.tensor([[0, 0, 0, 0, 0], [1, 0, 0, 0, 0]], dtype=th.bool)
+    batch = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph)
+
+    # Forward pass
+    policy, value = basic_network(batch)
+    test_output((2, 10), -5, (2,), value, policy)
+    print("Batch test passed")
 
     print("All tests passed")
 
@@ -369,7 +453,14 @@ def test_ACController():
         None
     """
 
-    def get_state(n_cities: int, current_city: int, first_city: int, previous_city: int, not_visited_cities: th.Tensor, cities: th.Tensor) -> th.Tensor:
+    def get_batch(n_cities: th.Tensor, 
+                current_city: th.Tensor, 
+                first_city: th.Tensor, 
+                previous_city: th.Tensor, 
+                visited_cities: th.Tensor, 
+                cities: th.Tensor,
+                max_nodes_per_graph: int = 10,
+                ) -> th.Tensor:
         """
         Returns the current state of the environment.
         
@@ -378,16 +469,51 @@ def test_ACController():
             current_city (int): The index of the current city.
             first_city (int): The index of the first city.
             previous_city (int): The index of the previous city.
-            not_visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
+            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
             cities (th.Tensor): A tensor containing the coordinates of the cities.
         
         Returns:
             th.Tensor: A tensor representing the state of the environment.
         """
-        info = th.Tensor([n_cities, current_city, first_city, previous_city])
-        state = th.cat((info, not_visited_cities, cities.view(-1))).unsqueeze(0)
+        # Metadata
+        metadata = th.cat((n_cities, current_city, first_city, previous_city), dim=1)
+
+        # Flat cities tensor
+        batch_size = n_cities.shape[0]
+        cities = cities.unsqueeze(0).expand(batch_size, -1, -1).view(batch_size, -1)
+
+        # Pad visited cities tensor
+        if n_cities[0] < max_nodes_per_graph:
+            padding = th.ones(batch_size, max_nodes_per_graph - n_cities[0])
+            visited_cities = th.cat((visited_cities, padding), dim=1)
+
+            padding = th.zeros(batch_size, (max_nodes_per_graph - n_cities[0])*2)
+            cities = th.cat((cities, padding), dim=1)
+
+        # Concatenate all tensors
+        state = th.cat((metadata, visited_cities, cities), dim=1)
         return state
     
+    def get_state_dict(first_city: th.Tensor, current_city: th.Tensor, visited_cities: th.Tensor, cities: th.Tensor) -> dict:
+        """
+        Returns the current state of the env in a dictionary.
+
+        Args:
+            first_city (int): The index of the first city.
+            current_city (int): The index of the current city.
+            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
+            cities (th.Tensor): A tensor containing the coordinates of the cities.
+
+        Returns:
+            dict: A dictionary containing the state of the environment.
+        """
+
+        return {
+            'first_cities': first_city,
+            'current_cities': current_city,
+            'visited_cities': visited_cities,
+            'cities': cities
+        }
 
     # Init network
     network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
@@ -406,23 +532,27 @@ def test_ACController():
     print("Parameters test passed")
 
     # Test choose_action    
-    n_cities = 5
-    current_city = -1
-    first_city = -1
-    previous_city = -1
-    not_visited_cities = th.tensor([1, 1, 1, 1, 1], dtype=th.bool)
-    not_visited_cities = th.cat((not_visited_cities, th.zeros(5, dtype=th.bool)), dim=0)
+
+    # Get a state dict
+    # current_city = th.tensor([-1], dtype=th.int32)
+    # first_city = th.tensor([-1], dtype=th.int32)    
+    # visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
+    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
+    # state = get_state_dict(first_city, current_city, visited_cities, cities)
+
+    # Get a state tensor
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
-    cities = th.cat((cities, th.zeros(5, 2)), dim=0)
-    state = get_state(n_cities, current_city, first_city, previous_city, not_visited_cities, cities)
+    visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
 
     action = controller.choose_action(state)
-    assert action.shape == (), "The action has the wrong shape"
+    assert action.shape == (1,), "The action has the wrong shape"
     print("Choose action test passed")
 
     # Test probabilities
     probs = controller.probabilities(state)
-    assert probs.shape == (10,), "The probabilities have the wrong shape"
+    assert probs.shape == (1, 10), "The probabilities have the wrong shape"
     assert th.isclose(probs.sum(), th.tensor(1.0)), "The sum of the probabilities is not 1"
     print("Probabilities test passed")
     print("All tests passed")
@@ -444,7 +574,7 @@ def test_runner():
 
     # Create an Environment
     cities = th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32)
-    env = EnvironemntTSP(cities, max_nodes_per_graph=10)
+    env = EnviornmentTSP(cities)
 
     # Create a Runner
     runner = Runner(controller, env)
@@ -510,7 +640,7 @@ def test_reinforce_learner():
 
     # Create a Runner
     cities = th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32)
-    env = EnvironemntTSP(cities, max_nodes_per_graph=10)
+    env = EnviornmentTSP(cities)
     runner = Runner(controller, env)
 
     # run an episode
@@ -520,6 +650,7 @@ def test_reinforce_learner():
     # Train the learner
     learner.train(batch)
     print("Train test passed")
+
 
 if __name__ == '__main__':
     print("Running tests...")
@@ -537,4 +668,3 @@ if __name__ == '__main__':
     test_runner()
     print("---------- Testing ReinforceLearner ----------")
     test_reinforce_learner()
-    

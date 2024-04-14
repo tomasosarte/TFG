@@ -1,12 +1,12 @@
 import torch as th
 from environments.environment import Environment
 
-class EnvironemntTSP(Environment):
+class EnviornmentTSP(Environment):
     """
     This class is used to represent the enviornment of a TSP instance.
     """
 
-    def __init__(self, cities: th.Tensor, max_nodes_per_graph: int, node_dimension: int = 2):
+    def __init__(self, cities: th.Tensor, node_dimension: int = 2, max_nodes_per_graph: int = 10):
         """
         Constructor for the TSP environment class.
         
@@ -26,21 +26,24 @@ class EnvironemntTSP(Environment):
 
         # The number of cities in the TSP instance and the cities themselves
         self.n_cities = cities.shape[0]
-        self.cities = cities
-
-        # The flat cities tensor extended to the maximum number of nodes per graph
-        self.flat_cities = th.zeros(max_nodes_per_graph * node_dimension)
-        self.flat_cities[:self.n_cities * node_dimension] = cities.view(-1)
+        self.cities = cities   
 
         # The current and previous city that the agent is at and the first city that the agent visited
-        self.current_city = -1
-        self.first_city = -1
-        self.previous_city = -1
+        # self.current_city = th.tensor([-1], dtype=th.int32)
+        # self.first_city = th.tensor([-1], dtype=th.int32)
+        # self.previous_city = th.tensor([-1], dtype=th.int32)
 
         # Tensor of booleans indicating which cities have not been visited with a 1 and which have been visited with a 0 extended to the maximum number of nodes per graph
-        self.max_nodes_per_graph = max_nodes_per_graph
-        self.not_visited_cities = th.zeros(max_nodes_per_graph, dtype=th.bool)
-        self.not_visited_cities[:self.n_cities] = True   
+        # self.visited_cities = th.zeros([1, self.n_cities], dtype=th.bool)
+        visited_cities = th.zeros(self.n_cities)
+        
+        # Form state
+        symbol = th.ones(1, dtype=th.float32)*(-1)
+        flat_cities = cities.flatten()
+        if self.n_cities < max_nodes_per_graph:
+            visited_cities = th.cat((visited_cities, th.ones(max_nodes_per_graph - self.n_cities)), dim=0)
+            flat_cities = th.cat((flat_cities, th.zeros((max_nodes_per_graph - self.n_cities)*node_dimension)))
+        self.state = th.cat((th.tensor([self.n_cities]), symbol, symbol, symbol, visited_cities, flat_cities))
 
     def _distance(self, city1: int, city2: int):
         """
@@ -53,7 +56,7 @@ class EnvironemntTSP(Environment):
         Returns:
             float: The distance between city1 and city2.
         """
-        return th.norm(self.cities[city1] - self.cities[city2])
+        return th.norm(self.cities[city1] - self.cities[city2].type(th.int32))
     
     def _reward(self, city1: int, city2: int):
         """
@@ -79,15 +82,13 @@ class EnvironemntTSP(Environment):
             th.Tensor: A tensor representing the state of the environment.
         """
         # return {
-        #     'current_city': self.current_city,
-        #     'first_city': self.first_city,
-        #     'previous_city': self.previous_city,
-        #     'not_visited_cities': self.not_visited_cities,
-        #     'cities': self.cities,
+        #      'current_cities': self.current_city,
+        #      'first_cities': self.first_city,
+        #      'previous_cities': self.previous_city,
+        #      'not_visited_cities': self.not_visited_cities,
+        #      'cities': self.cities,
         # }
-        info = th.Tensor([self.n_cities, self.current_city, self.first_city, self.previous_city])
-        state = th.cat((info, self.not_visited_cities, self.flat_cities)).unsqueeze(0)
-        return state
+        return self.state
     
     def reset(self) -> dict:
         """
@@ -100,19 +101,22 @@ class EnvironemntTSP(Environment):
             th.Tensor: The state of the environment after resetting.
         """
         super().reset()
-        self.current_city = -1
-        self.first_city = -1
-        self.previous_city = -1
-        self.not_visited_cities = th.zeros(self.max_nodes_per_graph, dtype=th.bool)
-        self.not_visited_cities[:self.n_cities] = True
+        # self.current_city = th.tensor([-1], dtype=th.int32)
+        # self.first_city = th.tensor([-1], dtype=th.int32)
+        # self.previous_city = th.tensor([-1], dtype=th.int32)
+        # self.not_visited_cities = th.ones(self.n_cities, dtype=th.bool).unsqueeze(0)
+        self.state[1] = -1
+        self.state[2] = -1
+        self.state[3] = -1
+        self.state[4:4+self.n_cities] = th.zeros(self.n_cities)
         return self._get_state()
         
-    def step(self, action: int):
+    def step(self, action: float) -> tuple:
         """
         Takes a step in the environment by visiting the city at the given index.
         
         Args:
-            action int: The index of the city to visit.
+            action float: The index of the city to visit.
         
         Returns:
             state th.Tensor: The state of the environment after taking the step.
@@ -122,18 +126,22 @@ class EnvironemntTSP(Environment):
         """
         
         state = self._get_state()
-        if self.first_city == -1:
-            self.first_city = action
-            self.current_city = action
-            self.not_visited_cities[action] = False
+        # if self.first_city == -1:
+        if self.state[1] == -1:
+            # self.first_city[0] = action
+            # self.current_city[0] = action
+            # self.not_visited_cities[0][action] = False
+            self.state[1] = action 
+            self.state[2] = action
+            self.state[4+action] = 1
             reward = 0
             done = False
         else:
-            self.previous_city = self.current_city
-            self.current_city = action
-            self.not_visited_cities[action] = False
-            reward = self._reward(self.current_city, self.previous_city)
-            done = self.not_visited_cities.sum() == 0
+            self.state[3] = self.state[2]
+            self.state[2] = action
+            self.state[4+action] = 1
+            reward = self._reward(self.state[2].type(th.int32), self.state[3].type(th.int32))
+            done = self.state[4:4+self.n_cities].sum() == self.n_cities
         
         self.elapsed_time += 1
         next_state = self._get_state()

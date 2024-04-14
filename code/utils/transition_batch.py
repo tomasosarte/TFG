@@ -1,7 +1,6 @@
 import threading
 import torch as th
 import numpy as np
-
 class TransitionBatch:
     """
     A class to represent a batch of transitions.
@@ -10,12 +9,10 @@ class TransitionBatch:
     def __init__(self, max_size: int, transition_format: dict, batch_size=32):
         """
         Constructor for the TransitionBatch class.
-
         Args:
             max_size (int): The maximum size of the batch.
             transition_format (dict): A dictionary containing the format of the transitions.
             batch_size (int): The batch size of the transitions.
-
         Returns:
             None
         """
@@ -27,8 +24,12 @@ class TransitionBatch:
         self.batch_size = batch_size
         self.dict = {}
         for key, spec in transition_format.items():
+            # if spec[1] is dict:
+            #     # Fill the dictionary with a list of empty dictionaries
+            #     self.dict[key] = [{} for _ in range(max_size)]
+            # else:
             self.dict[key] = th.zeros([max_size, *spec[0]], dtype=spec[1])
-        
+
     def _clone_empty_batch(self, max_size: int = None, batch_size: int = None):
         """ 
         Clones this TransitionBatch without cloning the data. 
@@ -43,14 +44,13 @@ class TransitionBatch:
         max_size = self.max_size if max_size is None else max_size
         batch_size = self.batch_size if batch_size is None else batch_size
         return TransitionBatch(max_size=max_size, transition_format={}, batch_size=batch_size)
-    
+
     def __getitem__(self, key):
         """
         Access the TransitionBatch with the [] operator. use as key either
         - the string name of a variable to get full tensor of that variable
         - slice to get a time-slice over all variables in the batch
         - a LongTensor to get a set of transitions specified by the indices in the LongTensor
-
         Args:
             key (str, slice, LongTensor): The key to access the TransitionBatch.
         
@@ -95,7 +95,7 @@ class TransitionBatch:
             int: The length of the batch.
         """
         return self.size
-    
+
     def __iter__(self):  
         """ 
         Initializes an iterator over the batch. 
@@ -109,7 +109,7 @@ class TransitionBatch:
         self.indices = list(range(self.size))
         np.random.shuffle(self.indices)
         return self
-    
+
     def __next__(self):  
         """ 
         Iterates through batch, returns list of contiguous tensors. 
@@ -143,7 +143,7 @@ class TransitionBatch:
             self.max_size = self.size
         finally: self.lock.release()
         return self  
-    
+
     def add(self, transition: dict):
         """ 
         Adding transition dictionaries, which can contain Tensors of arbitrary length. 
@@ -157,9 +157,10 @@ class TransitionBatch:
         # Add all data in the dict
         self.lock.acquire()
         try:
-            idx = th.LongTensor([(self.first + self.size) % self.max_size])
+            idx = None
             n = 1
             for k, v in transition.items():
+                if idx is None: idx = th.LongTensor([(self.first + self.size) % self.max_size])
                 self.dict[k][idx] = v
             # Increase the size (and handle overflow)
             self.size += n

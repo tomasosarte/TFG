@@ -99,9 +99,8 @@ class ReinforceLearner:
         self.old_pi, loss_sum = None, 0.0
         for _ in range(1 + self.offpolicy_iterations):
             # Compute model output for the batch.
-            print("Batch: ", batch['states'])
             policies, values = self.model(batch['states']) # Compute policy and values
-            _, next_values = self.model(batch['next_states'])[:, -1].unsqueeze(dim=-1) if self.compute_next_val else None
+            _, next_values = self.model(batch['next_states']) if self.compute_next_val else None, None
             # Combine policy and value loss
             loss = self._policy_loss(policies, self._advantages(batch, next_values)) + self.value_loss_param * self._value_loss(batch, values, next_values)
             # Backpropagate loss
