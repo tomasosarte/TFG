@@ -116,8 +116,8 @@ class BasicNetwork(nn.Module):
         num_cities = state_batch[0][0].type(th.int32)
         batch_size = state_batch.shape[0]
         state_shape = state_batch.shape[1]
-        assert num_cities <= self.max_nodes_per_graph, "The number of cities in the graph is greater than the maximum number of nodes per graph"
-        assert state_shape == (4 + self.max_nodes_per_graph + self.node_dimension*self.max_nodes_per_graph), "The state tensor has the wrong shape"
+        assert num_cities <= self.max_nodes_per_graph, "The number of cities in the graph is greater than the maximum number of nodes per graph."
+        assert state_shape == (4 + self.max_nodes_per_graph + self.node_dimension*self.max_nodes_per_graph), "The state tensor has the wrong shape."
 
         current_cities = state_batch[:, 1].type(th.int64)
         first_cities = state_batch[:, 2].type(th.int64)
@@ -125,6 +125,9 @@ class BasicNetwork(nn.Module):
         start_cts = 4 + self.max_nodes_per_graph
         visited_cities = state_batch[:, 4:start_cts].type(th.bool)
         cities = state_batch[0][start_cts: start_cts + num_cities*self.node_dimension].view(-1, 2)
+
+        # Check if all cities are visited in in one state tensor
+        assert not visited_cities.all(dim=1).any(), "All cities must be visited in one state tensor."
 
         # Get embeddings
         embedded_symbol = self.initial_embedding(self.symbol)
@@ -141,6 +144,7 @@ class BasicNetwork(nn.Module):
 
         # If n_cities < max_nodes_per_graph, pad the input tensor with zeros and the not visited cities tensor
         pad = self.max_nodes_per_graph - num_cities
+        
         # Get pad embedded symbols and concat them with cities
         padding_tensor = embedded_symbol.expand(pad, -1).expand(batch_size, -1, -1)
         padded_embedded_cities = th.cat((embedded_cities.unsqueeze(0).expand(batch_size, -1, -1), padding_tensor), dim=1)

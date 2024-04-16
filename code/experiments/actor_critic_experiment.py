@@ -7,8 +7,13 @@ from environments.environment import Environment
 from utils.transition_batch import TransitionBatch
 import numpy as np
 from runners.multi_runner import MultiRunner
+import matplotlib.pyplot as plt
+import torch as th
+from IPython.display import display, clear_output
+import pylab as pl
+from IPython import display
 
-class ActorCriticExperiment (Experiment):
+class ActorCriticExperiment(Experiment):
     """
     Performs online actor-critic training overwriting the Experiment object.
     """
@@ -25,15 +30,15 @@ class ActorCriticExperiment (Experiment):
         Returns:
             None
         """
-        super().__init__(params, model, **kwargs)
+        super().__init__(params, model, env, **kwargs)
         self.max_episodes = params.get('max_episodes', int(1E6))
         self.max_steps = params.get('max_steps', int(1E9))
         self.grad_repeats = params.get('grad_repeats', 1)
         self.batch_size = params.get('batch_size', 1024)
         self.controller = ActorCriticController(model)
         self.env = env
-        self.runner = MultiRunner(self.controller, params=params) if params.get('multi_runner', True) \
-                      else Runner(self.controller, params=params)
+        self.runner = MultiRunner(self.controller, env=env, params=params) if params.get('multi_runner', True) \
+                      else Runner(self.controller, env=env, params=params)
         self.learner = ReinforceLearner(model, params=params) if learner is None else learner
         self.learner.set_controller(self.controller)
 
@@ -69,11 +74,49 @@ class ActorCriticExperiment (Experiment):
             # Show intermediate results
             if self.print_dots:
                 print('.', end='')
-            if self.plot_frequency is not None and (episode + 1) % self.plot_frequency == 0 \
-                                               and len(self.episode_losses) > 2:
+            if self.plot_frequency is not None and (episode + 1) % self.plot_frequency == 0 and len(self.episode_losses) > 2:
                 self.plot_training(update=True)
                 if self.print_when_plot:
                     print('Iteration %u, 100-epi-return %.4g +- %.3g, length %u, loss %g' % 
                           (len(self.episode_returns), np.mean(self.episode_returns[-100:]), 
                            np.std(self.episode_returns[-100:]), np.mean(self.episode_lengths[-100:]), 
                            np.mean(self.episode_losses[-100:])))
+    
+    def plot_rollout(self) -> None:
+        """
+        Dynamically plots a rollout of the agent in the environment, displaying one action at a time,
+        with arrows accumulating to show the full path of actions.
+        Specifically adjusted for Jupyter Notebook environments using IPython display for live updates.
+        """
+        batch = self.runner.run_episode()
+        states = batch['buffer']['states']
+        actions = batch['buffer']['actions']
+
+        cities = self.env.cities
+
+        # Create a plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_label('Rollout')
+        ax.set_xlabel('Coord X')
+        ax.set_ylabel('Coord Y')
+
+        # Draw the cities
+        ax.plot(cities[:, 0], cities[:, 1], 'o', color='black')
+        
+        for i in range(1, states.shape[0]):
+            current_city = cities[states[i][2].type(th.int32)]
+            next_city = cities[actions[i].squeeze(0).type(th.int32)]
+
+            # Draw the path
+            # ax.plot([current_city[0], next_city[0]], [current_city[1], next_city[1]], color='red')
+
+            # Draw the arrow
+            ax.arrow(current_city[0], current_city[1], next_city[0] - current_city[0], next_city[1] - current_city[1], head_width=0.01, head_length=0.02, fc='blue', ec='blue')
+
+            # Sleep for a short while to slow down the animation
+            display.clear_output(wait=True)
+            display.display(pl.gcf())
+            

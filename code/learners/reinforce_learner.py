@@ -29,6 +29,7 @@ class ReinforceLearner:
         self.compute_next_val = False  # whether the next state's value is computed
         self.old_pi = None  # this variable can be used for your PPO implementation
         self.max_cities = params.get('max_cities', 20)
+        self.epsilon = 1e-8
 
     def set_controller(self, controller) -> None:
         """
@@ -81,7 +82,7 @@ class ReinforceLearner:
         Returns:
             Policy loss.
         """
-        return -(advantages.detach() * pi.log()).mean()
+        return -(advantages.detach() * (pi+self.epsilon).log()).mean()
 
     def train(self, batch) -> None:
         """

@@ -31,6 +31,6 @@ class ActorCriticController(Controller):
         Returns:
             th.Tensor: The action to take.
         """
-        return th.distributions.Categorical(probs=self.probabilities(state)).sample()
+        return th.distributions.Categorical(probs=self.probabilities(state)).sample().unsqueeze(0)
         
     

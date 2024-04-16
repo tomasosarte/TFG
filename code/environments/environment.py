@@ -17,6 +17,7 @@ class Environment:
         """
         # Elapsed time in the environment
         self.elapsed_time = 0
+        self.state_shape = None
 
     def reset(self) -> dict:
         """

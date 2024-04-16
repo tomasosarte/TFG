@@ -1,5 +1,5 @@
-import random as rnd
 import torch as th
+import matplotlib.pyplot as plt
 
 class TSPGenerator:
     """
@@ -52,4 +52,28 @@ class TSPGenerator:
 
         return [self.generate_batch(n_instances, n_cities) for n_cities in list_n_cities]
 
-    
+    def plot_instance(self, cities: th.Tensor):
+        """
+        Plot an instance of a tsp problem
+
+        Args:
+            cities (th.Tensor): Tensor of shape: (n_cities, 2) representingg and instance of tsp problem
+
+        Returns: 
+            None
+        """
+        # Extract coordinates
+        x = cities[:, 0]
+        y = cities[:, 1]
+
+        # Create graph
+        plt.figure(figsize=(8, 6))
+        plt.scatter(x, y, c='blue', marker='o')  # Puedes cambiar el color y el marcador
+
+        # Add title and tags
+        plt.title('City')
+        plt.xlabel('Coord X')
+        plt.ylabel('Coord Y')
+
+        # Show
+        plt.show()

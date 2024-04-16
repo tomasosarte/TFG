@@ -19,6 +19,7 @@ class Runner:
 
         # Set up current state and time step
         self.state = self.env.reset()
+        self.state_shape = self.env.state_shape
         self.sum_rewards = 0
         self.time_step = 0
 
@@ -51,8 +52,8 @@ class Runner:
         """
         return {
             'actions': ((1,), th.long),
-            'states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph*self.node_dimension,), th.float32),
-            'next_states': ((4 + self.max_nodes_per_graph + self.max_nodes_per_graph*self.node_dimension,), th.float32),
+            'states': (self.state_shape, th.float32),
+            'next_states': (self.state_shape, th.float32),
             'rewards': ((1,), th.float32),
             'dones': ((1,), th.bool),
             'returns': ((1,), th.float32)
@@ -84,7 +85,7 @@ class Runner:
             'next_states': next_state,
             'rewards': reward,
             'dones': done,
-            'returns': th.zeros(1, dtype=th.float32)
+            'returns': th.zeros(1, 1, dtype=th.float32)
         }
     
     def run(self, n_steps : int, transition_buffer: TransitionBatch = None, trim = True, return_dict = None) -> dict:
@@ -106,7 +107,10 @@ class Runner:
         max_steps = n_steps if n_steps > 0 else self.episode_length
         for t in range(max_steps):
             # One step in the 
-            action = self.controller.choose_action(self.state.unsqueeze(0))
+            # print("State: ", self.state)
+            # print("State shape: ", self.state.shape)
+            # print('-'*50)
+            action = self.controller.choose_action(self.state)
             state, reward, done, next_state = self.env.step(action)
             self.sum_rewards += reward
             my_transition_buffer.add(self._wrap_transition(action, self.state, next_state, reward, done))
@@ -134,7 +138,7 @@ class Runner:
 
         # Return statistics (mean reward, mean length, and environment steps)
         if return_dict is None: return_dict = {}
-        return_dict.update({'buffer': transition_buffer.dict,
+        return_dict.update({'buffer': transition_buffer,
                             'episode_reward': None if len(episode_rewards) == 0 else np.mean(episode_rewards),
                             'episode_length': None if len(episode_lengths) == 0 else np.mean(episode_lengths),
                             'env_steps': time})

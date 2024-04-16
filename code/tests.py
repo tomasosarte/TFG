@@ -9,7 +9,7 @@ from controllers.ac_controller import ActorCriticController
 from runners.runner import Runner
 from params import default_params
 from learners.reinforce_learner import ReinforceLearner
-from experiments.experiment import ACExperiment
+from experiments.actor_critic_experiment import ActorCriticExperiment
 
 
 def test_transition_batch():
@@ -43,7 +43,7 @@ def test_transition_batch():
             'next_states': next_state,
             'rewards': reward,
             'dones': done,
-            'returns': th.zeros(1, dtype=th.float32)
+            'returns': th.zeros(1, 1, dtype=th.float32)
         }
     
     def transition_format() -> dict:
@@ -58,8 +58,8 @@ def test_transition_batch():
         """
         return {
             'actions': ((1,), th.long),
-            'states': ((34,), th.float32),
-            'next_states': ((34,), th.float32),
+            'states': ((34, ), th.float32),
+            'next_states': ((34, ), th.float32),
             'rewards': ((1,), th.float32),
             'dones': ((1,), th.bool),
             'returns': ((1,), th.float32)
@@ -91,7 +91,7 @@ def test_transition_batch():
 
     # Reset the environment and make step
     env.reset()
-    action = th.tensor([0], dtype=th.long)
+    action = th.tensor([[0]], dtype=th.long)
     state, reward, done, next_state = env.step(action)
 
     # Add a transition and test that is added correctly
@@ -101,7 +101,7 @@ def test_transition_batch():
     print("First Add test passed")
 
     # Add another transition
-    action = th.tensor([1], dtype=th.long)
+    action = th.tensor([[1]], dtype=th.long)
     state, reward, done, next_state = env.step(action.type(th.int32))
     wrapped_transition = _wrap_transition(action, state, next_state, reward, done)
     tb.add(wrapped_transition)
@@ -109,7 +109,7 @@ def test_transition_batch():
     print("Second Add test passed")
 
     # Add another transition ande test overflow
-    action = th.tensor([2], dtype=th.long)
+    action = th.tensor([[2]], dtype=th.long)
     state, reward, done, next_state = env.step(action.type(th.int32))
     wrapped_transition = _wrap_transition(action, state, next_state, reward, done)
     tb.add(wrapped_transition)
@@ -124,7 +124,7 @@ def test_transition_batch():
 
     # Reset the environment and make step
     env.reset()
-    action = th.tensor([0], dtype=th.long)
+    action = th.tensor([[0]], dtype=th.long)
     state, reward, done, next_state = env.step(action.type(th.int32))
 
     # Add a transition and test that is added correctly
@@ -178,11 +178,11 @@ def test_environment_tsp():
         # assert th.all(state['cities'] == cities), "The cities tensor is not correct"
 
         # Tensor test
-        assert state[2] == current_city_value, "The current city is not correct"
-        assert state[1] == first_city_value, "The first city is not correct"
-        assert state[3] == previous_city_value, "The previous city is not correct"
-        assert th.all(state[4:9] == visited_cities), "The visited cities tensor is not correct"
-        assert th.all(state[14:24].view(-1, 2) == cities), "The cities tensor is not correct"
+        assert state[0][2] == current_city_value, "The current city is not correct"
+        assert state[0][1] == first_city_value, "The first city is not correct"
+        assert state[0][3] == previous_city_value, "The previous city is not correct"
+        assert th.all(state[0][4:9] == visited_cities), "The visited cities tensor is not correct"
+        assert th.all(state[0][14:24].view(-1, 2) == cities), "The cities tensor is not correct"
 
     cities = th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32)
     env = EnviornmentTSP(cities)
@@ -547,7 +547,7 @@ def test_ACController():
     state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
 
     action = controller.choose_action(state)
-    assert action.shape == (1,), "The action has the wrong shape"
+    assert action.shape == (1,1), "The action has the wrong shape"
     print("Choose action test passed")
 
     # Test probabilities
@@ -651,20 +651,88 @@ def test_reinforce_learner():
     learner.train(batch)
     print("Train test passed")
 
+def test_ac_experiment():
+    """
+    Test the ActorCriticExperiment class.
+    
+    Args:
+        None
+        
+    Returns:
+        None
+    """
+
+    # Get params
+    params = default_params()
+
+    # Create network
+    basic_network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+
+    # Create environment
+    # cities = th.tensor([[0.0, 0.0], [0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4]], dtype=th.float32)
+    cities = TSPGenerator().generate_instance(5)
+    env = EnviornmentTSP(cities)
+
+    # Create learner 
+    controller = ActorCriticController(basic_network)
+    optimizer = th.optim.Adam(basic_network.parameters(), lr=0.001)
+    learner = ReinforceLearner(basic_network, controller, optimizer, params)
+
+    # Create the experiment
+    experiment = ActorCriticExperiment(params = params, model = basic_network, env = env, learner = learner)
+
+    # Run the experiment
+    experiment.run()
+
+    print("Experiment test passed")
+    print("All tests passed")
+
+def test_jupyter():
+    # Get params
+    params = default_params()
+
+    # Create network
+    basic_network = BasicNetwork(max_nodes_per_graph = params['max_nodes_per_graph'], 
+                                node_dimension = params['node_dimension'], 
+                                embedding_dimension = params['embedding_dimension'])
+
+    # Create environment
+    tsp_generator = TSPGenerator()
+    # cities = th.tensor([[0.0, 0.0], [0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4]], dtype=th.float32)
+    cities = tsp_generator.generate_instance(20)
+    env = EnviornmentTSP(cities = cities, max_nodes_per_graph = params['max_nodes_per_graph'], node_dimension = params['node_dimension'])
+
+    # Create learner 
+    controller = ActorCriticController(basic_network)
+    optimizer = th.optim.Adam(basic_network.parameters(), lr=0.001)
+    learner = ReinforceLearner(model = basic_network, 
+                            controller = controller, 
+                            optimizer = optimizer, 
+                            params = params)
+
+    # Create the experiment
+    experiment = ActorCriticExperiment(params = params, model = basic_network, env = env, learner = learner)
+
+    # Run the experiment
+    experiment.run()
 
 if __name__ == '__main__':
-    print("Running tests...")
-    print("---------- Testing TransitionBatch ----------")
-    test_transition_batch()
-    print("---------- Testing EnvironmentTSP ----------")
-    test_environment_tsp()
-    print("---------- Testing BasicNetwork ----------")
-    test_basic_network()
-    print("---------- Testing TSPGenerator ----------")
-    test_generator()
-    print("---------- Testing ACController ----------")
-    test_ACController()
-    print("---------- Testing Runner ----------")
-    test_runner()
-    print("---------- Testing ReinforceLearner ----------")
-    test_reinforce_learner()
+    # print("Running tests...")
+    # print("---------- Testing TransitionBatch ----------")
+    # test_transition_batch()
+    # print("---------- Testing EnvironmentTSP ----------")
+    # test_environment_tsp()
+    # print("---------- Testing BasicNetwork ----------")
+    # test_basic_network()
+    # print("---------- Testing TSPGenerator ----------")
+    # test_generator()
+    # print("---------- Testing ACController ----------")
+    # test_ACController()
+    # print("---------- Testing Runner ----------")
+    # test_runner()
+    # print("---------- Testing ReinforceLearner ----------")
+    # test_reinforce_learner()
+    # print("---------- Testing ActorCriticExperiment ----------")
+    # test_ac_experiment()
+    print("---------- Testing Jupyter ----------")
+    test_jupyter()
