@@ -77,7 +77,19 @@ class Experiment:
         display.clear_output(wait=True)
         if update:
             display.display(pl.gcf())
-    
+
+    def plot_rollout(self) -> None:
+        """
+        Dynamically plots a rollout of the agent in the environment, displaying one action at a time,
+
+        Args:
+            None
+        
+        Returns:
+            None
+        """ 
+
+        pass
     def run(self):
         """ 
         Starts (or continues) the experiment. 

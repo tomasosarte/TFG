@@ -84,9 +84,13 @@ class ActorCriticExperiment(Experiment):
     
     def plot_rollout(self) -> None:
         """
-        Dynamically plots a rollout of the agent in the environment, displaying one action at a time,
-        with arrows accumulating to show the full path of actions.
-        Specifically adjusted for Jupyter Notebook environments using IPython display for live updates.
+        Overriding the plot_rollout method to plot the rollout of the agent.
+
+        Args:
+            None
+        
+        Returns:
+            None
         """
         batch = self.runner.run_episode()
         states = batch['buffer']['states']
