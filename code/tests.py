@@ -6,11 +6,55 @@ from environments.environment_tsp import EnviornmentTSP
 from networks.basic_network import BasicNetwork
 from generators.tsp_generator import TSPGenerator
 from controllers.ac_controller import ActorCriticController
+from controllers.epsilon_greedy_controller import EpsilonGreedyController
 from runners.runner import Runner
-from params import default_params
+from params import default_params, set_tsp_params
 from learners.reinforce_learner import ReinforceLearner
 from experiments.actor_critic_experiment import ActorCriticExperiment
 
+# -------------------------- AUXILIAR FUNCTIONS ---------------------------
+def get_batch(n_cities: th.Tensor, 
+            current_city: th.Tensor, 
+            first_city: th.Tensor, 
+            previous_city: th.Tensor, 
+            visited_cities: th.Tensor, 
+            cities: th.Tensor,
+            max_nodes_per_graph: int = 10,
+            ) -> th.Tensor:
+    """
+    Returns the current state of the environment.
+    
+    Args:
+        n_cities (int): The number of cities in the graph.
+        current_city (int): The index of the current city.
+        first_city (int): The index of the first city.
+        previous_city (int): The index of the previous city.
+        visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
+        cities (th.Tensor): A tensor containing the coordinates of the cities.
+    
+    Returns:
+        th.Tensor: A tensor representing the state of the environment.
+    """
+    # Metadata
+    metadata = th.cat((n_cities, current_city, first_city, previous_city), dim=1)
+
+    # Flat cities tensor
+    batch_size = n_cities.shape[0]
+    cities = cities.unsqueeze(0).expand(batch_size, -1, -1).view(batch_size, -1)
+
+    # Pad visited cities tensor
+    if n_cities[0] < max_nodes_per_graph:
+        padding = th.ones(batch_size, max_nodes_per_graph - n_cities[0])
+        visited_cities = th.cat((visited_cities, padding), dim=1)
+
+        padding = th.zeros(batch_size, (max_nodes_per_graph - n_cities[0])*2)
+        cities = th.cat((cities, padding), dim=1)
+
+    # Concatenate all tensors
+    state = th.cat((metadata, visited_cities, cities), dim=1)
+    return state
+
+# ---------------------------------------------------------------------------------------------------------------
 
 def test_transition_batch():
     """
@@ -22,7 +66,6 @@ def test_transition_batch():
     Returns:
         None
     """
-
     def _wrap_transition(action: th.Tensor, state: th.Tensor, next_state: th.Tensor, reward: th.Tensor, done: th.Tensor):
         """
         Wraps the transition in a dictionary.
@@ -45,7 +88,7 @@ def test_transition_batch():
             'dones': done,
             'returns': th.zeros(1, 1, dtype=th.float32)
         }
-    
+
     def transition_format() -> dict:
         """
         Returns the format of the transitions: A dictionary of (shape, dtype) entries for each key
@@ -66,15 +109,19 @@ def test_transition_batch():
         }
 
     def test_add(tb: TransitionBatch, first:int, size:int, wrapped_transition: dict, index:int) -> None:
-        # assert tb.first == first, "The first attribute is not correct"
-        # assert tb.size == size, "The size of the TransitionBatch is not correct"
-        # assert tb.dict['states'][index] == wrapped_transition['states'], "State is not saved correctly"
-        # assert tb.dict['next_states'][index] == wrapped_transition['next_states'], "Next state is not saved correctly"
-        # assert tb.dict['actions'][index] == wrapped_transition['actions'], "Action is not saved correctly"
-        # assert tb.dict['rewards'][index] == wrapped_transition['rewards'], "Reward is not saved correctly"
-        # assert tb.dict['dones'][index] == wrapped_transition['dones'], "Done is not saved correctly"
-        # assert tb.dict['returns'][index] == wrapped_transition['returns'], "Return is not saved correctly"
+        """
+        Test the add method of the TransitionBatch class.
 
+        Args:
+            tb (TransitionBatch): The TransitionBatch object.
+            first (int): The first attribute of the TransitionBatch object.
+            size (int): The size of the TransitionBatch object.
+            wrapped_transition (dict): The wrapped transition to be added.
+            index (int): The index of the transition to be tested.
+
+        Returns:
+            None
+        """
         assert tb.first == first, "The first attribute is not correct"
         assert tb.size == size, "The size of the TransitionBatch is not correct"
         assert th.all(tb.dict['states'][index] == wrapped_transition['states']), "State is not saved correctly"
@@ -83,6 +130,9 @@ def test_transition_batch():
         assert th.all(tb.dict['rewards'][index] == wrapped_transition['rewards']), "Reward is not saved correctly"
         assert th.all(tb.dict['dones'][index] == wrapped_transition['dones']), "Done is not saved correctly"
         assert th.all(tb.dict['returns'][index] == wrapped_transition['returns']), "Return is not saved correctly"
+
+    print("---------- Testing TransitionBatch ----------")
+
     # -------------------------- TEST ADD ---------------------------
 
     # Create a TransitionBatch and enviornment
@@ -170,12 +220,6 @@ def test_environment_tsp():
         Returns:
             None
         """
-        # Dictionary test
-        # assert state['current_cities'] == current_city_value, "The current city is not correct"
-        # assert state['first_cities'] == first_city_value, "The first city is not correct"
-        # assert state['previous_cities'] == previous_city_value, "The previous city is not correct"
-        # assert th.all(state['visited_cities'] == visited_cities), "The visited cities tensor is not correct"
-        # assert th.all(state['cities'] == cities), "The cities tensor is not correct"
 
         # Tensor test
         assert state[0][2] == current_city_value, "The current city is not correct"
@@ -183,6 +227,8 @@ def test_environment_tsp():
         assert state[0][3] == previous_city_value, "The previous city is not correct"
         assert th.all(state[0][4:9] == visited_cities), "The visited cities tensor is not correct"
         assert th.all(state[0][14:24].view(-1, 2) == cities), "The cities tensor is not correct"
+
+    print("---------- Testing EnvironmentTSP ----------")
 
     cities = th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32)
     env = EnviornmentTSP(cities)
@@ -236,68 +282,6 @@ def test_basic_network():
     Returns:
         None
     """
-
-    def get_batch(n_cities: th.Tensor, 
-                current_city: th.Tensor, 
-                first_city: th.Tensor, 
-                previous_city: th.Tensor, 
-                visited_cities: th.Tensor, 
-                cities: th.Tensor,
-                max_nodes_per_graph: int = 10,
-                ) -> th.Tensor:
-        """
-        Returns the current state of the environment.
-        
-        Args:
-            n_cities (int): The number of cities in the graph.
-            current_city (int): The index of the current city.
-            first_city (int): The index of the first city.
-            previous_city (int): The index of the previous city.
-            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
-            cities (th.Tensor): A tensor containing the coordinates of the cities.
-        
-        Returns:
-            th.Tensor: A tensor representing the state of the environment.
-        """
-        # Metadata
-        metadata = th.cat((n_cities, current_city, first_city, previous_city), dim=1)
-
-        # Flat cities tensor
-        batch_size = n_cities.shape[0]
-        cities = cities.unsqueeze(0).expand(batch_size, -1, -1).view(batch_size, -1)
-
-        # Pad visited cities tensor
-        if n_cities[0] < max_nodes_per_graph:
-            padding = th.ones(batch_size, max_nodes_per_graph - n_cities[0])
-            visited_cities = th.cat((visited_cities, padding), dim=1)
-
-            padding = th.zeros(batch_size, (max_nodes_per_graph - n_cities[0])*2)
-            cities = th.cat((cities, padding), dim=1)
-
-        # Concatenate all tensors
-        state = th.cat((metadata, visited_cities, cities), dim=1)
-        return state
-    
-    def get_state_dict(first_city: th.Tensor, current_city: th.Tensor, visited_cities: th.Tensor, cities: th.Tensor) -> dict:
-        """
-        Returns the current state of the env in a dictionary.
-
-        Args:
-            first_city (int): The index of the first city.
-            current_city (int): The index of the current city.
-            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
-            cities (th.Tensor): A tensor containing the coordinates of the cities.
-
-        Returns:
-            dict: A dictionary containing the state of the environment.
-        """
-
-        return {
-            'first_cities': first_city,
-            'current_cities': current_city,
-            'visited_cities': visited_cities,
-            'cities': cities
-        }
     
     def test_output(pol_shape, start_mask, value_shape, value: th.Tensor, policy: th.Tensor) -> None:
         assert policy.shape == pol_shape, "The output tensor has the wrong shape"
@@ -307,16 +291,11 @@ def test_basic_network():
         assert value.shape == value_shape, "The value tensor has the wrong shape"
         assert th.isclose(policy.sum(), th.tensor(batch_size)), "The sum of the policy tensor is not 1"
         
-    max_nodes_per_graph = 10
+    print("---------- Testing BasicNetwork ----------")
+    
     # Create a BasicNetwork object
+    max_nodes_per_graph = 10
     basic_network = BasicNetwork(max_nodes_per_graph = max_nodes_per_graph, node_dimension = 2, embedding_dimension = 4)
-
-    # Get a state dict
-    # current_city = th.tensor([-1], dtype=th.int32)
-    # first_city = th.tensor([-1], dtype=th.int32)
-    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
-    # visited_cities = th.tensor([[1, 1, 1, 1, 1]], dtype=th.bool)
-    # state = get_state_dict(first_city, current_city, visited_cities, cities)
 
     # Get a state tensor
     n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
@@ -329,13 +308,6 @@ def test_basic_network():
     test_output((1, 10), -5, (1,), value, policy)
     print("Test 1 passed")
 
-    # Get a state dict
-    # current_city = th.tensor([0], dtype=th.int32)
-    # first_city = th.tensor([0], dtype=th.int32)
-    # cities = th.tensor([[1, 2], [3, 4], [5, 6]], dtype=th.float32)
-    # visited_cities = th.tensor([[1, 0, 0]], dtype=th.bool)
-    # state = get_state_dict(first_city, current_city, visited_cities, cities)
-
     # Get a state tensor
     n_cities, current_city, first_city, previous_city = th.tensor([[3]]), th.tensor([[0]]), th.tensor([[0]]), th.tensor([[0]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6]], dtype=th.float32)
@@ -346,13 +318,6 @@ def test_basic_network():
     policy, value = basic_network(state)
     test_output((1, 10), -7, (1,), value, policy)
     print("Test 2 passed")
-
-    # Get a state dict
-    # current_city = th.tensor([-1], dtype=th.int32)
-    # first_city = th.tensor([-1], dtype=th.int32)
-    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20]], dtype=th.float32)
-    # visited_cities = th.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=th.bool)
-    # state = get_state_dict(first_city, current_city, visited_cities, cities)
 
     # Get a state tensor
     n_cities, current_city, first_city, previous_city = th.tensor([[10]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
@@ -366,13 +331,6 @@ def test_basic_network():
     # Output should have shape [10] and all values should be different from 0
     test_output((1, 10), -10, (1,), value, policy)
     print("Test 3 passed")
-
-    # Get a state dict
-    # current_city = th.tensor([-1], dtype=th.int32)
-    # first_city = th.tensor([-1], dtype=th.int32)
-    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20], [22, 22]], dtype=th.float32)
-    # visited_cities = th.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=th.bool)
-    # state = get_state_dict(first_city, current_city, visited_cities, cities)
 
     # Get a state tensor
     n_cities, current_city, first_city, previous_city = th.tensor([[11]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
@@ -388,13 +346,6 @@ def test_basic_network():
         print("Test 4 passed")
     else:
         raise AssertionError("The forward pass should have failed")
-    
-    # Test batch of states inside the network
-    # current_city = th.tensor([-1, 0], dtype=th.int32)
-    # first_city = th.tensor([-1, 0], dtype=th.int32)
-    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
-    # visited_cities = th.tensor([[0, 0, 0, 0, 0], [1, 0, 0, 0, 0]], dtype=th.bool)
-    # batch = get_state_dict(first_city, current_city, visited_cities, cities)
 
     # Get a state tensor
     n_cities, current_city, first_city, previous_city = th.tensor([[5], [3]]), th.tensor([[-1], [0]]), th.tensor([[-1], [0]]), th.tensor([[-1], [0]])
@@ -419,6 +370,7 @@ def test_generator():
     Returns:
         None
     """
+    print("---------- Testing TSPGenerator ----------")
     # Test the generator
     generator = TSPGenerator()
     instance_tsp = generator.generate_instance(5)
@@ -452,69 +404,7 @@ def test_ACController():
     Returns:
         None
     """
-
-    def get_batch(n_cities: th.Tensor, 
-                current_city: th.Tensor, 
-                first_city: th.Tensor, 
-                previous_city: th.Tensor, 
-                visited_cities: th.Tensor, 
-                cities: th.Tensor,
-                max_nodes_per_graph: int = 10,
-                ) -> th.Tensor:
-        """
-        Returns the current state of the environment.
-        
-        Args:
-            n_cities (int): The number of cities in the graph.
-            current_city (int): The index of the current city.
-            first_city (int): The index of the first city.
-            previous_city (int): The index of the previous city.
-            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
-            cities (th.Tensor): A tensor containing the coordinates of the cities.
-        
-        Returns:
-            th.Tensor: A tensor representing the state of the environment.
-        """
-        # Metadata
-        metadata = th.cat((n_cities, current_city, first_city, previous_city), dim=1)
-
-        # Flat cities tensor
-        batch_size = n_cities.shape[0]
-        cities = cities.unsqueeze(0).expand(batch_size, -1, -1).view(batch_size, -1)
-
-        # Pad visited cities tensor
-        if n_cities[0] < max_nodes_per_graph:
-            padding = th.ones(batch_size, max_nodes_per_graph - n_cities[0])
-            visited_cities = th.cat((visited_cities, padding), dim=1)
-
-            padding = th.zeros(batch_size, (max_nodes_per_graph - n_cities[0])*2)
-            cities = th.cat((cities, padding), dim=1)
-
-        # Concatenate all tensors
-        state = th.cat((metadata, visited_cities, cities), dim=1)
-        return state
-    
-    def get_state_dict(first_city: th.Tensor, current_city: th.Tensor, visited_cities: th.Tensor, cities: th.Tensor) -> dict:
-        """
-        Returns the current state of the env in a dictionary.
-
-        Args:
-            first_city (int): The index of the first city.
-            current_city (int): The index of the current city.
-            visited_cities (th.Tensor): A tensor indicating which cities have not been visited.
-            cities (th.Tensor): A tensor containing the coordinates of the cities.
-
-        Returns:
-            dict: A dictionary containing the state of the environment.
-        """
-
-        return {
-            'first_cities': first_city,
-            'current_cities': current_city,
-            'visited_cities': visited_cities,
-            'cities': cities
-        }
-
+    print("---------- Testing ACController ----------")
     # Init network
     network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
     controller = ActorCriticController(network)
@@ -533,13 +423,6 @@ def test_ACController():
 
     # Test choose_action    
 
-    # Get a state dict
-    # current_city = th.tensor([-1], dtype=th.int32)
-    # first_city = th.tensor([-1], dtype=th.int32)    
-    # visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
-    # cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
-    # state = get_state_dict(first_city, current_city, visited_cities, cities)
-
     # Get a state tensor
     n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
@@ -557,6 +440,57 @@ def test_ACController():
     print("Probabilities test passed")
     print("All tests passed")
 
+def test_EpsilonGreedyController():
+    print("---------- Testing EpsilonGreedyController ----------")
+
+    # Create a Controller
+    params = {'epsilon_start': 1.0, 'epsilon_finish': 0.05, 'epsilon_anneal_time': 10000, 'max_nodes_per_graph': 10}
+    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    controller = ActorCriticController(network)
+    controller = EpsilonGreedyController(controller, params, exploration_step=1)
+
+    # Test epsilon
+    epsilon = controller.epsilon()
+    print("Epsilon: ", epsilon)
+    assert controller.epsilon() == 1.0, "The epsilon is not correct"
+    print("Epsilon test passed")
+
+    # Test choose_action
+
+    # Get a state tensor
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
+    cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
+    visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
+    action = controller.choose_action(state)
+    assert action.shape == (1,1), "The action has the wrong shape"
+    print("Choose action test passed")
+
+    # Test choose_action with visited cities tensor with most of the cities visited
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[1]]), th.tensor([[2]]), th.tensor([[0]])
+    visited_cities = th.tensor([[1, 1, 1, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
+    action = controller.choose_action(state)
+    assert action.shape == (1,1), "The action has the wrong shape"
+    assert visited_cities[0][action] == 0, "The action is one of the visited cities"
+    print("Choose action test 2 passed")
+
+    # Set epsilon to 0.5 and choose action
+    controller.max_epsilon = th.tensor(0.5, dtype=th.float32)
+    controller.num_decisions = th.tensor(0, dtype=th.float32)
+    epsilon = controller.epsilon()
+    action = controller.choose_action(state)
+    assert epsilon == 0.5, "The epsilon is not correct"
+    assert action.shape == (1,1), "The action has the wrong shape"
+    print("Choose action test 3 passed")
+
+    # Check that epsilon is decayed
+    epsilon = controller.epsilon()
+    assert epsilon <= 0.5, "The epsilon is not correct"
+    print("Epsilon decay test passed")
+
+    print("All tests passed")
+
 def test_runner():
     """
     Test the Runner class.
@@ -567,7 +501,7 @@ def test_runner():
     Returns:
         None
     """
-    
+    print("---------- Testing Runner ----------")
     # Create a Controller
     network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
     controller = ActorCriticController(network)
@@ -615,6 +549,7 @@ def test_reinforce_learner():
         None
     """
     
+    print("---------- Testing ReinforceLearner ----------")
     # Create network
     network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
 
@@ -661,7 +596,7 @@ def test_ac_experiment():
     Returns:
         None
     """
-
+    print("---------- Testing ActorCriticExperiment ----------")
     # Get params
     params = default_params()
 
@@ -688,8 +623,15 @@ def test_ac_experiment():
     print("All tests passed")
 
 def test_jupyter():
+    print("---------- Testing Jupyter ----------")
     # Get params
     params = default_params()
+
+    # Set TSP params
+    max_nodes_per_graph = 10
+    embedding_dimension = 10
+    max_episodes = 50
+    params = set_tsp_params(params, max_nodes_per_graph, embedding_dimension, max_episodes)
 
     # Create network
     basic_network = BasicNetwork(max_nodes_per_graph = params['max_nodes_per_graph'], 
@@ -699,7 +641,7 @@ def test_jupyter():
     # Create environment
     tsp_generator = TSPGenerator()
     # cities = th.tensor([[0.0, 0.0], [0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4]], dtype=th.float32)
-    cities = tsp_generator.generate_instance(20)
+    cities = tsp_generator.generate_instance(max_nodes_per_graph)
     env = EnviornmentTSP(cities = cities, max_nodes_per_graph = params['max_nodes_per_graph'], node_dimension = params['node_dimension'])
 
     # Create learner 
@@ -711,28 +653,24 @@ def test_jupyter():
                             params = params)
 
     # Create the experiment
+    params['plot_frequency'] = None
     experiment = ActorCriticExperiment(params = params, model = basic_network, env = env, learner = learner)
 
     # Run the experiment
     experiment.run()
 
+
 if __name__ == '__main__':
-    # print("Running tests...")
-    # print("---------- Testing TransitionBatch ----------")
+    print("Running tests...")
+
     # test_transition_batch()
-    # print("---------- Testing EnvironmentTSP ----------")
     # test_environment_tsp()
-    # print("---------- Testing BasicNetwork ----------")
     # test_basic_network()
-    # print("---------- Testing TSPGenerator ----------")
     # test_generator()
-    # print("---------- Testing ACController ----------")
     # test_ACController()
-    # print("---------- Testing Runner ----------")
+    # test_EpsilonGreedyController()
     # test_runner()
-    # print("---------- Testing ReinforceLearner ----------")
     # test_reinforce_learner()
-    # print("---------- Testing ActorCriticExperiment ----------")
     # test_ac_experiment()
-    print("---------- Testing Jupyter ----------")
     test_jupyter()
+

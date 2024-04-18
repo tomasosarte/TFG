@@ -19,6 +19,31 @@ class Environment:
         self.elapsed_time = 0
         self.state_shape = None
 
+    def _reward(self, current_city: int, previous_city: int) -> float:
+        """
+        Returns the reward for visiting the current city from the previous city.
+
+        Args:
+            current_city (int): The index of the current city.
+            previous_city (int): The index of the previous city.
+        
+        Returns:
+            float: The reward for visiting the current city.
+        """
+        pass
+
+    def _get_state(self) -> th.Tensor:
+        """
+        Returns the current state of the environment.
+        
+        Args:
+            None
+        
+        Returns:
+            th.Tensor: A tensor representing the state of the environment.
+        """
+        pass
+    
     def reset(self) -> dict:
         """
         Resets the environment to the starting state.

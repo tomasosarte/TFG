@@ -106,11 +106,8 @@ class Runner:
         time, episode_start, episode_lengths, episode_rewards = 0, 0, [], []
         max_steps = n_steps if n_steps > 0 else self.episode_length
         for t in range(max_steps):
-            # One step in the 
-            # print("State: ", self.state)
-            # print("State shape: ", self.state.shape)
-            # print('-'*50)
             action = self.controller.choose_action(self.state)
+            #print('Action chosen:', action)
             state, reward, done, next_state = self.env.step(action)
             self.sum_rewards += reward
             my_transition_buffer.add(self._wrap_transition(action, self.state, next_state, reward, done))
@@ -131,7 +128,7 @@ class Runner:
             if n_steps <= 0 and done: 
                 my_transition_buffer.trim()
                 break
-
+        
         # Add the sampled transitions to the given transition buffer
         transition_buffer = my_transition_buffer if transition_buffer is None else transition_buffer.add(my_transition_buffer)
         if trim: transition_buffer.trim()
@@ -142,6 +139,8 @@ class Runner:
                             'episode_reward': None if len(episode_rewards) == 0 else np.mean(episode_rewards),
                             'episode_length': None if len(episode_lengths) == 0 else np.mean(episode_lengths),
                             'env_steps': time})
+        
+        #print("Finished run!!!")
         return return_dict
     
     def run_episode(self, transition_buffer: TransitionBatch = None, trim = True, return_dict = None) -> dict:

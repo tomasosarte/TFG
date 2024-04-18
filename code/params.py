@@ -4,7 +4,7 @@ def default_params():
             # Debugging outputs and plotting during training
             'plot_frequency': 10,             # plots a debug message avery n steps
             'plot_train_samples': True,       # whether the x-axis is env.steps (True) or episodes (False)
-            'print_when_plot': True,          # prints debug message if True
+            'print_when_plot': False,         # prints debug message if True
             'print_dots': False,              # prints dots for every gradient update
 
             # Environment parameters
@@ -25,8 +25,8 @@ def default_params():
 
             # Exploration parameters
             'epsilon_start': 1,               # annealing starts at this epsilon
-            'epsilon_finish': 1E-5,           # annealing stops at (and keeps) this epsilon
-            'epsilon_anneal_time': 1E3,       # exploration anneals epsilon over these many steps
+            'epsilon_finish': 1E-3,           # annealing stops at (and keeps) this epsilon
+            'epsilon_anneal_time': 1E5,       # exploration anneals epsilon over these many steps
 
             # Actor-critic parameters  
             'value_loss_param': 0.1,          # governs the relative impact of the value relative to policy loss

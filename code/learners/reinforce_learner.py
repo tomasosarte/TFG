@@ -1,8 +1,10 @@
 import torch as th 
 
+from controllers.controller import Controller
+
 class ReinforceLearner:
 
-    def __init__(self, model: th.nn.Module, controller = None, optimizer: th.optim.Optimizer = None, params: dict = {}) -> None:
+    def __init__(self, model: th.nn.Module, controller: Controller = None, optimizer: th.optim.Optimizer = None, params: dict = {}) -> None:
         """
         Initialize the ReinforceLearner object.
 
@@ -19,6 +21,7 @@ class ReinforceLearner:
         self.model = model
         self.controller = controller
         self.learning_rate = params.get('lr', 0.001)
+
         # Optimizer used in the training process.
         if optimizer is None: self.optimizer = th.optim.Adam(model.parameters(), lr=self.learning_rate)
         else: self.optimizer = optimizer
@@ -31,7 +34,7 @@ class ReinforceLearner:
         self.max_cities = params.get('max_cities', 20)
         self.epsilon = 1e-8
 
-    def set_controller(self, controller) -> None:
+    def set_controller(self, controller: Controller) -> None:
         """
         This function is called in the experiment to set the controller
 
@@ -43,7 +46,7 @@ class ReinforceLearner:
         """
         self.controller = controller
 
-    def _advantages(self, batch, values=None, next_values=None):
+    def _advantages(self, batch: dict, values: th.float32 = None, next_values: th.float32 = None) -> th.Tensor:
         """ 
         Computes the advantages, Q-values or returns for the policy loss.
 
@@ -57,7 +60,7 @@ class ReinforceLearner:
         """
         return batch['returns']
     
-    def _value_loss(self, batch, values=None, next_values=None):
+    def _value_loss(self, batch: dict, values: th.float32 = None, next_values: th.float32 = None) -> th.Tensor:
         """
         Computes the value loss (if there is one). 
         
@@ -71,7 +74,7 @@ class ReinforceLearner:
         """
         return 0
     
-    def _policy_loss(self, pi, advantages):
+    def _policy_loss(self, pi: th.Tensor, advantages : th.Tensor) -> th.Tensor:
         """ 
         Computes the policy loss. 
 
@@ -84,7 +87,7 @@ class ReinforceLearner:
         """
         return -(advantages.detach() * (pi+self.epsilon).log()).mean()
 
-    def train(self, batch) -> None:
+    def train(self, batch: dict) -> float:
         """
         Trains the model using the batch of data.
 
@@ -99,19 +102,22 @@ class ReinforceLearner:
         self.model.train(True)
         self.old_pi, loss_sum = None, 0.0
         for _ in range(1 + self.offpolicy_iterations):
-            # Compute model output for the batch.
-            policies, values = self.model(batch['states']) # Compute policy and values
+
+            # Compute policy and values
+            policies, values = self.model(batch['states']) 
+            #print('Policies: \n', policies)
+
+            # Compute next values if needed
             _, next_values = self.model(batch['next_states']) if self.compute_next_val else None, None
+
             # Combine policy and value loss
             loss = self._policy_loss(policies, self._advantages(batch, next_values)) + self.value_loss_param * self._value_loss(batch, values, next_values)
+
             # Backpropagate loss
             self.optimizer.zero_grad()
             loss.backward()
             grad_norm = th.nn.utils.clip_grad_norm_(self.all_parameters, self.grad_norm_clip)
             self.optimizer.step()
             loss_sum += loss.item()
+
         return loss_sum
-
-
-
-        

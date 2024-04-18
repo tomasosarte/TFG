@@ -38,70 +38,6 @@ class BasicNetwork(nn.Module):
             nn.Linear(512, 128), nn.ReLU(),
             nn.Linear(128, max_nodes_per_graph + 1)
         )
-    
-    # def forward(self, state_batch: dict) -> th.Tensor:
-    #     """
-    #     Forward pass of the network. This function takes a state th.Tensor as input and returns the output of the network.
-        
-    #     Environment tsp conditions:
-    #         - Cities are common to all states in the batch
-    #     Args:
-    #         state (th.Tensor): A tensor containing the state of the agent in the environment.
-
-    #     Returns:
-    #         th.Tensor: The output of the network.
-    #     """
-        
-    #     first_cities = state_batch['first_cities'] # batch tensor
-    #     current_cities = state_batch['current_cities'] # batch tensor
-    #     cities = state_batch['cities'] # single tensor
-    #     visited_cities = state_batch['visited_cities'] # batch tensor
-    #     batch_size = first_cities.shape[0]
-    #     num_cities = cities.shape[0]
-
-    #     assert num_cities <= self.max_nodes_per_graph, "The number of cities in the graph is greater than the maximum number of nodes per graph"
-
-    #     # Get the cities and symbol embeddings
-    #     embedded_cities = self.initial_embedding(cities)
-    #     symbol_embedding = self.initial_embedding(self.symbol)
-    #     embeddings = th.cat((embedded_cities, symbol_embedding), dim=0)
-
-    #     # Get the embedded first and current cities
-    #     embedded_first_cities = embeddings[first_cities + 1]
-    #     embedded_current_cities = embeddings[current_cities + 1]
-
-    #     # If n_cities < max_nodes_per_graph, pad the input tensor with zeros and the not visited cities tensor
-    #     extra_cities = self.max_nodes_per_graph - num_cities
-    #     if extra_cities > 0:
-    #         padding_tensor = th.zeros(extra_cities, self.embedding_dimension)
-    #         embedded_cities = th.cat((embedded_cities, padding_tensor), dim=0)
-
-    #         padding_bool = th.zeros(batch_size, extra_cities, dtype=th.bool)
-    #         visited_cities = th.cat((visited_cities, padding_bool), dim=1)
-
-
-    #     # Reshape to concatenate the embedded first city, embedded current city and the cities tensor
-    #     embedded_cities = embedded_cities.unsqueeze(0).expand(batch_size, -1, -1)   
-    #     current_and_first_cities = th.cat((embedded_first_cities.unsqueeze(1), embedded_current_cities.unsqueeze(1)), dim=1)
-
-    #     # Cat the embedded first city, embedded current city and the cities tensor
-    #     input_tensor = th.cat((current_and_first_cities, embedded_cities), dim=1)
-
-    #     # Reshape the input tensor a 2D tensor with shape (batch_size, (max_nodes_per_graph + 2) * embedding_dimension)
-    #     input_tensor = input_tensor.view(batch_size, -1)
-
-    #     # Forward pass
-    #     output = self.layers(input_tensor)
-    #     # Output shape (batch_size, max_nodes_per_graph + 1)
-    #     output_masked = output[:, :-1].masked_fill(~visited_cities, -float('inf'))
-
-    #     # Transform the output into probabilities
-    #     output_probabilities = th.softmax(output_masked, dim=1)
-
-    #     # Get value
-    #     value = output[:, -1]
-
-    #     return output_probabilities, value
 
     def forward(self, state_batch: th.Tensor) -> th.Tensor:
         """
@@ -127,7 +63,7 @@ class BasicNetwork(nn.Module):
         cities = state_batch[0][start_cts: start_cts + num_cities*self.node_dimension].view(-1, 2)
 
         # Check if all cities are visited in in one state tensor
-        assert not visited_cities.all(dim=1).any(), "All cities must be visited in one state tensor."
+        assert not visited_cities.all(dim=1).any(), "Not all cities can be visited."
 
         # Get embeddings
         embedded_symbol = self.initial_embedding(self.symbol)

@@ -16,9 +16,6 @@ class TransitionBatch:
         self.batch_size = batch_size
         self.dict = {}
         for key, spec in transition_format.items():
-            # print Everything
-            # print(f"key: {key}\nspec: {spec}\nmax_size: {max_size}\nbatch_size: {batch_size}")
-            # print('-'*50)
             self.dict[key] = th.zeros([max_size, *spec[0]], dtype=spec[1])
             
     def _clone_empty_batch(self, max_size=None, batch_size=None):
