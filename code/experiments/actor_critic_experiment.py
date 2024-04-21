@@ -83,6 +83,8 @@ class ActorCriticExperiment(Experiment):
                           (len(self.episode_returns), np.mean(self.episode_returns[-100:]), 
                            np.std(self.episode_returns[-100:]), np.mean(self.episode_lengths[-100:]), 
                            np.mean(self.episode_losses[-100:])))
+                    
+        return np.mean(self.episode_returns[-100:])
     
     def plot_rollout(self) -> None:
         """
