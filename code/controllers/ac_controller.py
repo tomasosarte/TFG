@@ -21,6 +21,20 @@ class ActorCriticController(Controller):
         """
         return ActorCriticController(model=self.model)
 
+    def probabilities(self, state: th.Tensor) -> th.Tensor:
+        """
+        Probabilities of the model
+
+        Args:
+            state (th.Tensor): The state of the environment.
+        
+        Returns:
+        """
+        self.lock.acquire()
+        try: probabilities, value = self.model(state)
+        finally: self.lock.release()
+        return probabilities
+    
     def choose_action(self, state: dict) -> th.Tensor:
         """
         Returns a sample from the model's output distribution.

@@ -61,7 +61,6 @@ class ActorCriticExperiment(Experiment):
         transition_buffer = TransitionBatch(self.batch_size, self.runner.transition_format(), self.batch_size)
         env_steps = 0 if len(self.env_steps) == 0 else self.env_steps[-1]
         for episode in range(self.max_episodes):
-            #print('Episode %u' % (episode + 1))
             # Run the policy fot batch_size steps
             batch = self.runner.run(self.batch_size, transition_buffer)
             env_steps += batch['env_steps']
@@ -71,10 +70,6 @@ class ActorCriticExperiment(Experiment):
                 self.episode_returns.append(batch['episode_reward'])
             # Make a gradient update step
             loss = self.learner.train(batch['buffer'])
-            #print('-' * 80)
-            #print("Episode reward: ", batch['episode_reward'])
-            #print('Loss %g' % loss)
-            #print('-' * 80)
             self.episode_losses.append(loss)
             # Quit if maximal number of environment steps is reached
             if env_steps >= self.max_steps: break

@@ -20,6 +20,13 @@ class GreedyController(Controller):
             GreedyController: The copied controller.
         """
         return GreedyController(model=self.model)
+    
+    def probabilities(self, state: th.Tensor, **kwargs):
+        """ Returns the probabilities with which the agent would choose actions (here one-hot because greedy). """
+        self.lock.acquire()
+        try: probabilities, value = self.model(state)
+        finally: self.lock.release()
+        return th.zeros(*probabilities.shape).scatter_(dim=-1, index=th.max(probabilities, dim=-1)[1].unsqueeze(dim=-1), src=th.ones(1, 1))
 
     def choose_action(self, state: dict) -> th.Tensor:
         """
@@ -31,5 +38,5 @@ class GreedyController(Controller):
         Returns:
             th.Tensor: The action to take.
         """
-        return th.max(self.probabilities(state), dim=-1)[1]
+        return th.max(self.probabilities(state), dim=-1)[1].unsqueeze(0)
     

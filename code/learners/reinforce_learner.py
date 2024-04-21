@@ -4,7 +4,7 @@ from controllers.controller import Controller
 
 class ReinforceLearner:
 
-    def __init__(self, model: th.nn.Module, controller: Controller = None, optimizer: th.optim.Optimizer = None, params: dict = {}) -> None:
+    def __init__(self, model: th.nn.Module, controller: Controller = None, params: dict = {}) -> None:
         """
         Initialize the ReinforceLearner object.
 
@@ -20,19 +20,21 @@ class ReinforceLearner:
         # Model used in the training process.
         self.model = model
         self.controller = controller
-        self.learning_rate = params.get('lr', 0.001)
-
-        # Optimizer used in the training process.
-        if optimizer is None: self.optimizer = th.optim.Adam(model.parameters(), lr=self.learning_rate)
-        else: self.optimizer = optimizer
         self.value_loss_param = params.get('value_loss_param', 1)
         self.offpolicy_iterations = params.get('offpolicy_iterations', 0)
         self.grad_norm_clip = params.get('grad_norm_clip', 10)
         self.all_parameters = list(model.parameters())
+        self.optimizer = th.optim.Adam(self.all_parameters, lr=params.get('lr', 5E-4))
         self.compute_next_val = False  # whether the next state's value is computed
         self.old_pi = None  # this variable can be used for your PPO implementation
+
+        # Optimizer used in the training process.
         self.max_cities = params.get('max_cities', 20)
         self.epsilon = 1e-8
+
+        # Entropy regularization
+        self.entropy_weight = params.get('entropy_weight', 0.01)
+        self.entropy_regularization = params.get('entropy_regularization', False)
 
     def set_controller(self, controller: Controller) -> None:
         """
@@ -101,17 +103,21 @@ class ReinforceLearner:
         # Set the model to training mode and old policy to None.
         self.model.train(True)
         self.old_pi, loss_sum = None, 0.0
+        
         for _ in range(1 + self.offpolicy_iterations):
 
             # Compute policy and values
             policies, values = self.model(batch['states']) 
-            #print('Policies: \n', policies)
 
             # Compute next values if needed
             _, next_values = self.model(batch['next_states']) if self.compute_next_val else None, None
 
             # Combine policy and value loss
             loss = self._policy_loss(policies, self._advantages(batch, next_values)) + self.value_loss_param * self._value_loss(batch, values, next_values)
+
+            # Add entropy regularization
+            if self.entropy_regularization:
+                loss -= self.entropy_weight * (policies * (policies+self.epsilon).log()).sum(dim=1).mean()
 
             # Backpropagate loss
             self.optimizer.zero_grad()

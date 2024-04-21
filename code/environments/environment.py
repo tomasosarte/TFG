@@ -17,6 +17,7 @@ class Environment:
         """
         # Elapsed time in the environment
         self.elapsed_time = 0
+        self.max_episode_length = 0
         self.state_shape = None
 
     def _reward(self, current_city: int, previous_city: int) -> float:

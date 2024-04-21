@@ -55,15 +55,23 @@ class BasicNetwork(nn.Module):
         assert num_cities <= self.max_nodes_per_graph, "The number of cities in the graph is greater than the maximum number of nodes per graph."
         assert state_shape == (4 + self.max_nodes_per_graph + self.node_dimension*self.max_nodes_per_graph), "The state tensor has the wrong shape."
 
-        current_cities = state_batch[:, 1].type(th.int64)
-        first_cities = state_batch[:, 2].type(th.int64)
-
         start_cts = 4 + self.max_nodes_per_graph
         visited_cities = state_batch[:, 4:start_cts].type(th.bool)
         cities = state_batch[0][start_cts: start_cts + num_cities*self.node_dimension].view(-1, 2)
+        first_cities = state_batch[:, 1].type(th.int32)
+        current_cities = state_batch[:, 2].type(th.int32)
+        previous_cities = state_batch[:, 3].type(th.int32)
 
-        # Check if all cities are visited in in one state tensor
-        assert not visited_cities.all(dim=1).any(), "Not all cities can be visited."
+        # Check that if tensor has all visited cities, first_city_cannot be -1
+        all_visited_cities = visited_cities.all(dim=1)
+        indices_all_visited_cities = th.nonzero(all_visited_cities).view(-1)
+        assert th.all(first_cities[indices_all_visited_cities] != -1), "If all cities are visited, the first city cannot be -1."
+
+        # Change the visited cities tensor to not visited the first city
+        if indices_all_visited_cities.shape[0] > 0:
+            first_cities_visited = first_cities[indices_all_visited_cities]
+            visited_cities[indices_all_visited_cities] = th.ones(visited_cities[indices_all_visited_cities].shape, dtype=th.bool)
+            visited_cities[indices_all_visited_cities, first_cities_visited] = 0
 
         # Get embeddings
         embedded_symbol = self.initial_embedding(self.symbol)

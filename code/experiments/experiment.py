@@ -24,18 +24,20 @@ class Experiment:
         """
         self.params = params
         self.plot_frequency = params.get('plot_frequency', 100)
-        self.plot_train_samples = params.get('plot_train_sample', True)
+        self.plot_train_samples = params.get('plot_train_samples', True)
         self.print_when_plot = params.get('print_when_plot', False)
         self.print_dots = params.get('print_dots', False)
         self.episode_returns = []
         self.episode_lengths = []
-        self.episode_losses = []
+        self.episode_losses  = []
         self.env_steps = []
         self.total_run_time = 0.0
 
-    def plot_training(self, update: bool = False) -> None:
+    def plot_training(self, update=False):
+        """ Plots logged training results. Use "update=True" if the plot is continuously updated
+            or use "update=False" if this is the final call (otherwise there will be double plotting). """ 
         # Smooth curves
-        window = max(int(len(self.episode_returns) / 50), 1)
+        window = max(int(len(self.episode_returns) / 50), 10)
         if len(self.episode_losses) < window + 2: return
         returns = np.convolve(self.episode_returns, np.ones(window)/window, 'valid')
         lengths = np.convolve(self.episode_lengths, np.ones(window)/window, 'valid')
@@ -58,11 +60,6 @@ class Experiment:
         pl.plot(env_steps, returns, colors[0])
         pl.xlabel('environment steps' if self.plot_train_samples else 'episodes')
         pl.ylabel('episode return')
-        # Plot the losses in the left subplot
-        pl.subplot(1, 3, 1)
-        pl.plot(env_steps, returns, colors[0])
-        pl.xlabel('environment steps' if self.plot_train_samples else 'episodes')
-        pl.ylabel('episode return')
         # Plot the episode lengths in the middle subplot
         ax = pl.subplot(1, 3, 2)
         ax.plot(env_steps, lengths, colors[0])
@@ -77,6 +74,11 @@ class Experiment:
         display.clear_output(wait=True)
         if update:
             display.display(pl.gcf())
+
+    def close(self):
+        """ Frees all allocated runtime ressources, but allows to continue the experiment later. 
+            Calling the run() method after close must be able to pick up the experiment where it was. """
+        pass
 
     def plot_rollout(self) -> None:
         """

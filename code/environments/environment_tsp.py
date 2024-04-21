@@ -44,6 +44,9 @@ class EnviornmentTSP(Environment):
 
         self.state = th.cat((th.tensor([self.n_cities]), symbol, symbol, symbol, visited_cities, flat_cities)).unsqueeze(0)
         self.state_shape = (4+max_nodes_per_graph+max_nodes_per_graph*node_dimension,)
+
+        # Maximum episode length
+        self._max_episode_steps = self.n_cities + 1
     
     def _reward(self, city1: int, city2: int):
         """
@@ -102,23 +105,28 @@ class EnviornmentTSP(Environment):
             done bool: A boolean indicating if the episode is done.
             info dict: A dictionary of additional information.
         """
-            
         state = self._get_state()
+        # If the first city has not been visited
         if self.state[0][1] == -1:
-            self.state[0][1] = action # first city
-            self.state[0][2] = action # current city
             assert self.state[0][4+action] == 0, "The first city has already been visited"
-            self.state[0][4+action] = 1
-            reward = 0
-            done = False
+            self.state[0][1] = action # first city == action
+            self.state[0][2] = action # current city == action
+            self.state[0][4+action], reward, done = 1, 0, False
+        # If the first city has been visited
         else:
-            self.state[0][3] = self.state[0][2] # previous city
-            self.state[0][2] = action # current city
-            assert self.state[0][4+action] == 0, "The city has already been visited"
-            self.state[0][4+action] = 1
-            reward = self._reward(self.state[0][2].type(th.int32), self.state[0][3].type(th.int32))
-            done = (self.state[0][4:4+self.n_cities].sum() == self.n_cities)
-        
+            # Determine if the episode is done with all cities visited
+            all_visited = th.sum(self.state[0][4:4+self.n_cities]) == self.n_cities
+            if all_visited:
+                assert action == self.state[0][1], "The action must be the first city to complete the tour"  
+                done = True              
+            else:
+                assert self.state[0][4+action] == 0, "The city has already been visited"
+                self.state[0][4+action] = 1
+                done = False
+            self.state[0][3] = self.state[0][2] # previous city == current city
+            self.state[0][2] = action # current city == first city
+            reward = self._reward(self.state[0][3].type(th.int32), self.state[0][2].type(th.int32))
+                
         self.elapsed_time += 1
         next_state = self._get_state()
         return state, th.tensor([[reward]], dtype=th.float32), th.tensor([[done]]), next_state

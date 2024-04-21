@@ -2,7 +2,6 @@ import threading
 import torch as th
 import numpy as np
 
-# Same as in exercise sheet 2
 class TransitionBatch:
     """ Simple implementation of a batchof transitionsm (or another dictionary-based tensor structure).
         Read and write operations are thread-safe, but the iterator is not (you cannot interate
@@ -89,23 +88,12 @@ class TransitionBatch:
             n = 0
             idx = None
             for k, v in trans.items():
-                # print("k: ",k)
-                # print("v: ",v)
-                # print("v type: ",v.dtype)   
                 if idx is None:
                     n = v.shape[0]
                     idx = th.LongTensor([(self.first + self.size + i) % self.max_size for i in range(n)])
-                    # print("idx: ",idx)
                 else:
-                    # print(n)
-                    # print("v.shape: ",v.shape[0])
                     assert n == v.shape[0], 'all tensors in a transition need to have the same batch_size'
                 idx = idx.view(idx.shape[0], *[1 for _ in range(len(v.shape) - 1)])
-
-                # print("self.dict[k].shape: ",self.dict[k].shape)
-                # print("v.shape: ", v.shape)
-                # print("idx.expand_as(v).shape: ",idx.expand_as(v).shape)
-                # print('-'*10)
                 self.dict[k].scatter_(dim=0, index=idx.expand_as(v), src=v)
             # Increase the size (and handle overflow)
             self.size += n

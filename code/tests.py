@@ -1,6 +1,7 @@
 import torch as th
 from torch import tensor
 
+from controllers.greedy_controller import GreedyController
 from utils.transition_batch import TransitionBatch
 from environments.environment_tsp import EnviornmentTSP
 from networks.basic_network import BasicNetwork
@@ -36,7 +37,7 @@ def get_batch(n_cities: th.Tensor,
         th.Tensor: A tensor representing the state of the environment.
     """
     # Metadata
-    metadata = th.cat((n_cities, current_city, first_city, previous_city), dim=1)
+    metadata = th.cat((n_cities, first_city, current_city, previous_city), dim=1)
 
     # Flat cities tensor
     batch_size = n_cities.shape[0]
@@ -264,8 +265,11 @@ def test_environment_tsp():
     _, reward, done, next_state = env.step(4)
     test_state(next_state, 4, 0, 3, th.tensor([1, 1, 1, 1, 1], dtype=th.bool), cities)
     assert reward == -1.4142135, "The reward must be -1.4142135"
-    assert done == True, "The episode is done"
+    assert done == False, "The episode is done"
     print("Step 5 test passed")
+
+    _, reward, done, next_state = env.step(0)
+    test_state(next_state, 0, 0, 4, th.tensor([1, 1, 1, 1, 1], dtype=th.bool), cities)
     
     state = env.reset()
     test_state(state, -1, -1, -1, th.tensor([0, 0, 0, 0, 0], dtype=th.bool), cities)
@@ -358,6 +362,36 @@ def test_basic_network():
     test_output((2, 10), -5, (2,), value, policy)
     print("Batch test passed")
 
+    # Test state tensor with all visited cities and first_city = -1
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[1]]), th.tensor([[-1]]), th.tensor([[0]])
+    visited_cities = th.tensor([[1, 1, 1, 1, 1]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph)
+
+    # Forward pass
+    try:
+        policy, value = basic_network(state)
+    except AssertionError as e:
+        # print(e)
+        print("Test 5 passed")
+
+
+    # Test state tensor with all visited cities and first_city != -1
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[1]]), th.tensor([[4]]), th.tensor([[0]])
+    visited_cities = th.tensor([[1, 1, 1, 1, 1]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph)
+
+    # Forward pass
+    policy, value = basic_network(state)
+    print("Policy: ", policy)
+
+    # Output should have shape [10] and all values should be different from 0
+    test_output((1, 10), -5, (1,), value, policy)
+    assert policy[0][first_city] == 1, "The probability of the first city is not 1"
+    for i in range(10):
+        if i != first_city:
+            assert policy[0][i] == 0, f"The probability of city {i} is not 0"
+    print("Test 6 passed")
+
     print("All tests passed")
 
 def test_generator():
@@ -440,28 +474,62 @@ def test_ACController():
     print("Probabilities test passed")
     print("All tests passed")
 
-def test_EpsilonGreedyController():
-    print("---------- Testing EpsilonGreedyController ----------")
+def test_GreedyController():
+    print("---------- Testing GreedyController ----------")
 
     # Create a Controller
-    params = {'epsilon_start': 1.0, 'epsilon_finish': 0.05, 'epsilon_anneal_time': 10000, 'max_nodes_per_graph': 10}
     network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
-    controller = ActorCriticController(network)
-    controller = EpsilonGreedyController(controller, params, exploration_step=1)
-
-    # Test epsilon
-    epsilon = controller.epsilon()
-    print("Epsilon: ", epsilon)
-    assert controller.epsilon() == 1.0, "The epsilon is not correct"
-    print("Epsilon test passed")
-
-    # Test choose_action
+    controller = GreedyController(network)
 
     # Get a state tensor
     n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
     visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
     state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
+
+    # Test probabilities
+    probs = controller.probabilities(state)
+    assert probs.shape == (1, 10), "The probabilities have the wrong shape"
+    assert th.isclose(probs.sum(), th.tensor(1.0)), "The sum of the probabilities is not 1"
+    encountered_non_zero = 0
+    for i in range(10):
+        if probs[0][i] > 0:
+            encountered_non_zero += 1
+    assert encountered_non_zero == 1, "The probabilities are not one-hot"
+    print("Probabilities test passed")
+
+    # Test choose_action
+    action = controller.choose_action(state)
+    assert action.shape == (1,1), "The action has the wrong shape"
+    print("Choose action test passed")
+    print("All tests passed")
+    
+def test_EpsilonGreedyController():
+    print("---------- Testing EpsilonGreedyController ----------")
+
+    # Create a Controller
+    params = {'epsilon_start': 0.5, 'epsilon_finish': 0.05, 'epsilon_anneal_time': 10000, 'max_nodes_per_graph': 10}
+    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    controller = ActorCriticController(network)
+    controller = EpsilonGreedyController(controller, params, exploration_step=1)
+
+    # Test epsilon
+    epsilon = controller.epsilon()
+    assert controller.epsilon() == 0.5, "The epsilon is not correct"
+    print("Epsilon test passed")
+
+
+    # Get a state tensor
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
+    cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
+    visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
+
+    # Test probabilities
+    probs = controller.probabilities(state)
+    print("Probs: ", probs)
+
+    # Test choose_action
     action = controller.choose_action(state)
     assert action.shape == (1,1), "The action has the wrong shape"
     print("Choose action test passed")
@@ -515,18 +583,15 @@ def test_runner():
 
     # Test run episode
     results = runner.run_episode()
-    # print(results)
-    # print(f"Actions: {results['buffer']['actions']}")
-    assert results['episode_length'] == 5, "The episode has the wrong length    "
-    assert results['env_steps'] == 5, "The environment has the wrong number of steps"
+
+    assert results['episode_length'] == 6, "The episode has the wrong length"
+    assert results['env_steps'] == 6, "The environment has the wrong number of steps"
     print("Run episode test passed")
 
     # Test run 2 episodes
-    results = runner.run(10)
-    # print(results)
-    # print(f"Actions: {results['buffer']['actions']}")
-    assert results['episode_length'] == 5, "The episode has the wrong length"
-    assert results['env_steps'] == 10, "The environment has the wrong number of steps"
+    results = runner.run(12)
+    assert results['episode_length'] == 6, "The episode has the wrong length"
+    assert results['env_steps'] == 12, "The environment has the wrong number of steps"
     print("Run 2 episodes test passed")
 
     # # Test run a few steps
@@ -556,14 +621,11 @@ def test_reinforce_learner():
     # Create controller
     controller = ActorCriticController(network)
 
-    # Create optmiizer
-    optimizer = th.optim.Adam(network.parameters(), lr=0.001)
-
     # Get initial parameters
     params = default_params()
 
     # Create ReinforceLearner
-    learner = ReinforceLearner(network, controller, optimizer, params)
+    learner = ReinforceLearner(network, controller, params)
 
     # -------------------- TEST SET CONTROLLER ----------------------------
     controller2 = ActorCriticController(network)
@@ -600,8 +662,13 @@ def test_ac_experiment():
     # Get params
     params = default_params()
 
+    max_nodes_per_graph = 10
+    embedding_dimension = 10
+    max_episodes = 50
+    params = set_tsp_params(params, max_nodes_per_graph, embedding_dimension, max_episodes)
+
     # Create network
-    basic_network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    basic_network = BasicNetwork(max_nodes_per_graph = max_nodes_per_graph, node_dimension = 2, embedding_dimension = embedding_dimension)
 
     # Create environment
     # cities = th.tensor([[0.0, 0.0], [0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4]], dtype=th.float32)
@@ -627,11 +694,26 @@ def test_jupyter():
     # Get params
     params = default_params()
 
-    # Set TSP params
+   # Set TSP params
     max_nodes_per_graph = 10
-    embedding_dimension = 10
-    max_episodes = 50
-    params = set_tsp_params(params, max_nodes_per_graph, embedding_dimension, max_episodes)
+    embedding_dimension = 4
+    max_episodes = 1000
+    episodes_in_batch = 1
+
+    params['problem'] = 'tsp'
+    params['max_nodes_per_graph'] = max_nodes_per_graph
+    params['node_dimension'] = 2
+    params['embedding_dimension'] = embedding_dimension
+    params['max_episode_length'] = max_nodes_per_graph + 1
+    params['batch_size'] = (max_nodes_per_graph + 1) * episodes_in_batch
+    params['max_episodes'] = max_episodes
+    params['max_steps'] = max_episodes * max_nodes_per_graph
+    params['epsilon_start'] = 1.0
+    params['epsilon_finish'] = 0.1
+    params['epsilon_anneal_time'] = 7000
+    params['entropy_weight'] = 0.2
+    params['lr'] = 5E-4
+
 
     # Create network
     basic_network = BasicNetwork(max_nodes_per_graph = params['max_nodes_per_graph'], 
@@ -646,11 +728,7 @@ def test_jupyter():
 
     # Create learner 
     controller = ActorCriticController(basic_network)
-    optimizer = th.optim.Adam(basic_network.parameters(), lr=0.001)
-    learner = ReinforceLearner(model = basic_network, 
-                            controller = controller, 
-                            optimizer = optimizer, 
-                            params = params)
+    learner = ReinforceLearner(model = basic_network, controller = controller, params = params)
 
     # Create the experiment
     params['plot_frequency'] = None
@@ -668,9 +746,10 @@ if __name__ == '__main__':
     # test_basic_network()
     # test_generator()
     # test_ACController()
+    # test_GreedyController()
     # test_EpsilonGreedyController()
-    # test_runner()
+    test_runner()
     # test_reinforce_learner()
     # test_ac_experiment()
-    test_jupyter()
+    # test_jupyter()
 
