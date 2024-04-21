@@ -699,6 +699,7 @@ def test_jupyter():
     embedding_dimension = 4
     max_episodes = 1000
     episodes_in_batch = 1
+    instance = 0
 
     params['problem'] = 'tsp'
     params['max_nodes_per_graph'] = max_nodes_per_graph
@@ -722,8 +723,9 @@ def test_jupyter():
 
     # Create environment
     tsp_generator = TSPGenerator()
+    # cities = tsp_generator.generate_instance(max_nodes_per_graph)
     # cities = th.tensor([[0.0, 0.0], [0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4]], dtype=th.float32)
-    cities = tsp_generator.generate_instance(max_nodes_per_graph)
+    cities = th.load(f"training/tsp/size_{max_nodes_per_graph}/instance_{instance}.pt")   
     env = EnviornmentTSP(cities = cities, max_nodes_per_graph = params['max_nodes_per_graph'], node_dimension = params['node_dimension'])
 
     # Create learner 

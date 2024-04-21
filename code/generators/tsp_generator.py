@@ -1,4 +1,6 @@
+import os
 import torch as th
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 class TSPGenerator:
@@ -77,3 +79,46 @@ class TSPGenerator:
 
         # Show
         plt.show()
+
+    def save_dataset(self, dataset: list[list[th.Tensor]], directory: str, list_of_n_cities: list[int]):
+        """
+        Saves the dataset to disk.
+
+        Args:
+            dataset (list): List of batches of TSP instances.
+            directory (str): Directory where the dataset files will be saved.
+            list_of_n_cities (list): List of city sizes for each batch.
+
+        Returns:
+            None
+        """
+
+        # Check if directory exists
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        
+        for i, batch in enumerate(tqdm(dataset, desc="Saving dataset")):
+            size = list_of_n_cities[i]
+            # Check if instance_size directory exists            
+            if not os.path.exists(f"{directory}/size_{size}"):
+                os.makedirs(f"{directory}/size_{size}")
+
+            for j, instance in enumerate(tqdm(batch, desc=f'Batch {i+1} - size {size}', leave=False)):
+                th.save(instance, f"{directory}/size_{size}/instance_{j}.pt")
+
+if __name__ == "__main__":
+
+    # Create training dataset
+    generator = TSPGenerator()
+
+    # Generate a batch set 
+    list_of_n_cities = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    n_instances = 10
+    dataset = generator.generate_batch_set(n_instances = n_instances, list_n_cities = list_of_n_cities)
+
+    # Save the dataset
+    generator.save_dataset(dataset, "../training/tsp", list_of_n_cities)
+
+    # Get inside ../training/tsp(size_10 and open the instance_0.pt file)
+    path = "../training/tsp/size_10/instance_0.pt"
+    cities = th.load(path)    
