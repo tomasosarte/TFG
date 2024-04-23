@@ -3,7 +3,7 @@ import torch as th
 from controllers.controller import Controller
 from learners.off_policy_actor_critic_learner import OffpolicyActorCriticLearner
 
-class PPOLearner (OffpolicyActorCriticLearner):
+class PPOLearner(OffpolicyActorCriticLearner):
     def __init__(self, model, controller: Controller = None, params: dict = {}):
         super().__init__(model=model, controller=controller, params=params)
         self.ppo_clipping = params.get('ppo_clipping', False)

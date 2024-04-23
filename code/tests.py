@@ -309,7 +309,7 @@ def test_basic_network():
     
     # Forward pass
     policy, value = basic_network(state)
-    test_output((1, 10), -5, (1,), value, policy)
+    test_output((1, 10), -5, (1,1), value, policy)
     print("Test 1 passed")
 
     # Get a state tensor
@@ -320,7 +320,7 @@ def test_basic_network():
 
     # Forward pass
     policy, value = basic_network(state)
-    test_output((1, 10), -7, (1,), value, policy)
+    test_output((1, 10), -7, (1,1), value, policy)
     print("Test 2 passed")
 
     # Get a state tensor
@@ -333,7 +333,7 @@ def test_basic_network():
     policy, value = basic_network(state)
 
     # Output should have shape [10] and all values should be different from 0
-    test_output((1, 10), -10, (1,), value, policy)
+    test_output((1, 10), -10, (1,1), value, policy)
     print("Test 3 passed")
 
     # Get a state tensor
@@ -359,7 +359,7 @@ def test_basic_network():
 
     # Forward pass
     policy, value = basic_network(batch)
-    test_output((2, 10), -5, (2,), value, policy)
+    test_output((2, 10), -5, (2,1), value, policy)
     print("Batch test passed")
 
     # Test state tensor with all visited cities and first_city = -1
@@ -385,7 +385,7 @@ def test_basic_network():
     print("Policy: ", policy)
 
     # Output should have shape [10] and all values should be different from 0
-    test_output((1, 10), -5, (1,), value, policy)
+    test_output((1, 10), -5, (1,1), value, policy)
     assert policy[0][first_city] == 1, "The probability of the first city is not 1"
     for i in range(10):
         if i != first_city:
@@ -745,12 +745,12 @@ if __name__ == '__main__':
 
     # test_transition_batch()
     # test_environment_tsp()
-    # test_basic_network()
+    test_basic_network()
     # test_generator()
     # test_ACController()
     # test_GreedyController()
     # test_EpsilonGreedyController()
-    test_runner()
+    # test_runner()
     # test_reinforce_learner()
     # test_ac_experiment()
     # test_jupyter()

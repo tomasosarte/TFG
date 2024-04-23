@@ -33,11 +33,13 @@ class BasicNetwork(nn.Module):
         
         # Layers of the network
         self.layers = nn.Sequential(
-            nn.Linear((max_nodes_per_graph + 2) * embedding_dimension, 128), nn.ReLU(),
+            nn.Linear((max_nodes_per_graph + 2) * embedding_dimension + max_nodes_per_graph, 128), nn.ReLU(),
             nn.Linear(128, 512), nn.ReLU(),
             nn.Linear(512, 128), nn.ReLU(),
-            nn.Linear(128, max_nodes_per_graph + 1)
+            nn.Linear(128, max_nodes_per_graph + 1),
         )
+
+        self.normalization = nn.LayerNorm(max_nodes_per_graph + 1)
 
     def forward(self, state_batch: th.Tensor) -> th.Tensor:
         """
@@ -49,6 +51,8 @@ class BasicNetwork(nn.Module):
         Returns:
             th.Tensor: The output of the network.
         """
+
+        # Get the number of cities, batch size and state shape, 
         num_cities = state_batch[0][0].type(th.int32)
         batch_size = state_batch.shape[0]
         state_shape = state_batch.shape[1]
@@ -78,35 +82,30 @@ class BasicNetwork(nn.Module):
         embedded_cities = self.initial_embedding(cities)
         embeddings = th.cat((embedded_cities, embedded_symbol), dim=0)
 
-        # Get first city and current city index in the embeddings
+        # Get the embedded first and current cities
         first_cities_index = first_cities + 1
         current_cities_index = current_cities + 1
-
-        # Get the embedded first and current cities
         embedded_first_cities = embeddings[first_cities_index]
         embedded_current_cities = embeddings[current_cities_index]
-
-        # If n_cities < max_nodes_per_graph, pad the input tensor with zeros and the not visited cities tensor
-        pad = self.max_nodes_per_graph - num_cities
         
         # Get pad embedded symbols and concat them with cities
+        pad = self.max_nodes_per_graph - num_cities
         padding_tensor = embedded_symbol.expand(pad, -1).expand(batch_size, -1, -1)
         padded_embedded_cities = th.cat((embedded_cities.unsqueeze(0).expand(batch_size, -1, -1), padding_tensor), dim=1)
 
         # Get input tensor
         input_tensor = th.cat((embedded_first_cities.unsqueeze(1), embedded_current_cities.unsqueeze(1), padded_embedded_cities), dim=1)
         input_tensor = input_tensor.view(batch_size, -1)
+        input_tensor = th.cat((input_tensor, (~visited_cities.view(batch_size, -1)).type(th.float32)), dim=1)
         
-        # Forward pass
+        # Get probabilities and value
         output = self.layers(input_tensor)
-
-        # Pass the mask that represents visited cities to the output tensor. Giving them 0 probaility of being selected
+        # print(f"Output: {output}")
         output_masked = output[:, :-1].masked_fill(visited_cities, -float('inf'))
-
-        # Transform the output into probabilities
+        print(f"Output masked: {output_masked}")
         output_probabilities = th.softmax(output_masked, dim=1)
-
-        # Get value
+        print(f"Output probabilities: {output_probabilities}")
+        print("-------------------")
         value = output[:, -1]
 
-        return output_probabilities, value
+        return output_probabilities, value.view(-1, 1)

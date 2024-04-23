@@ -4,7 +4,7 @@ from controllers.controller import Controller
 from learners.reinforce_learner import ReinforceLearner
 
 class BiasedReinforceLearner (ReinforceLearner):
-    def __init__(self, model, controller: Controller = None, params : dict = {}):
+    def __init__(self, model: th.nn.Module, controller: Controller = None, params : dict = {}):
         super().__init__(model=model, controller=controller, params=params)
         self.value_criterion = th.nn.MSELoss()
         self.advantage_bias = params.get('advantage_bias', True)

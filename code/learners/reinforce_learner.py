@@ -110,7 +110,9 @@ class ReinforceLearner:
             policies, values = self.model(batch['states']) 
 
             # Compute next values if needed
-            _, next_values = self.model(batch['next_states']) if self.compute_next_val else None, None
+            next_values = None
+            if self.compute_next_val:
+                _, next_values = self.model(batch['next_states'])
 
             # Combine policy and value loss
             loss = self._policy_loss(policies, self._advantages(batch, next_values)) + self.value_loss_param * self._value_loss(batch, values, next_values)
