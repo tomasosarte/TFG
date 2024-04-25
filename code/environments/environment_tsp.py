@@ -11,42 +11,41 @@ class EnviornmentTSP(Environment):
         Constructor for the TSP environment class.
         
         Args:
-            cities th.Tensor: A list of City objects representing the cities in the TSP instance. The cities
-                                are represented as a 2D tensor with shape (n, 2) where n is the number of cities.
-            first_city th.Tensor: The first city that the agent visited.
+            cities th.Tensor: A tensor representing the cities in the TSP instance.
+            node_dimension int: The dimension of the node features.
+            max_nodes_per_graph int: The maximum number of nodes that a graph can have.
         
         Returns:
             None
         """
-
-        # Init of Environment class
         super().__init__()
-
-        # Check the shape of the cities tensor
         assert cities.shape[1] == node_dimension, "The cities tensor must have shape (n, 2)"
 
-        # The number of cities in the TSP instance and the cities themselves
+        # Init_vars
         self.n_cities = cities.shape[0]
         self.cities = cities 
-
-        # Tensor indicating which cities have been visited with a 1 and which have not been visited with a 0
         visited_cities = th.zeros(self.n_cities)
-        
-        # Form symbol tensor
         symbol = th.ones(1, dtype=th.float32)*(-1)
-
-        # Form the state tensor
         flat_cities = cities.flatten()
-
-        if self.n_cities < max_nodes_per_graph:
-            visited_cities = th.cat((visited_cities, th.ones(max_nodes_per_graph - self.n_cities)), dim=0)
-            flat_cities = th.cat((flat_cities, th.zeros((max_nodes_per_graph - self.n_cities)*node_dimension)))
-
-        self.state = th.cat((th.tensor([self.n_cities]), symbol, symbol, symbol, visited_cities, flat_cities)).unsqueeze(0)
-        self.state_shape = (4+max_nodes_per_graph+max_nodes_per_graph*node_dimension,)
-
-        # Maximum episode length
         self._max_episode_steps = self.n_cities + 1
+
+        # Distance matrix
+        self.distance_matrix = th.zeros((self.n_cities, self.n_cities))
+        for i in range(self.n_cities):
+            for j in range(self.n_cities):
+                self.distance_matrix[i][j] = th.norm(self.cities[i] - self.cities[j])
+
+        # Padding
+        if self.n_cities < max_nodes_per_graph:
+            padding_visited_cities = th.ones(max_nodes_per_graph - self.n_cities)
+            visited_cities = th.cat((visited_cities, padding_visited_cities), dim=0)
+            padding_cities = th.ones((max_nodes_per_graph - self.n_cities)*node_dimension)*(-1)
+            flat_cities = th.cat((flat_cities, padding_cities))
+
+        # State
+        first_city, current_city, previous_city = symbol, symbol, symbol
+        self.state = th.cat((th.tensor([self.n_cities]), first_city, current_city, previous_city, visited_cities, flat_cities)).unsqueeze(0)
+        self.state_shape = (4 + max_nodes_per_graph + max_nodes_per_graph*node_dimension,)
     
     def _reward(self, city1: int, city2: int):
         """
@@ -60,7 +59,7 @@ class EnviornmentTSP(Environment):
             float: The reward for moving from city1 to city2.
         """
         # Calculate the distance between the two cities
-        distance = th.norm(self.cities[city1] - self.cities[city2])
+        distance = self.distance_matrix[city1][city2]
         return -distance
     
     def _get_state(self):
@@ -105,24 +104,22 @@ class EnviornmentTSP(Environment):
             done bool: A boolean indicating if the episode is done.
             info dict: A dictionary of additional information.
         """
-        state = self._get_state()
-        # If the first city has not been visited
+        # Save current state
+        state = self._get_state() 
         if self.state[0][1] == -1:
             assert self.state[0][4+action] == 0, "The first city has already been visited"
             self.state[0][1] = action # first city == action
             self.state[0][2] = action # current city == action
             self.state[0][4+action], reward, done = 1, 0, False
-        # If the first city has been visited
         else:
             # Determine if the episode is done with all cities visited
             all_visited = th.sum(self.state[0][4:4+self.n_cities]) == self.n_cities
             if all_visited:
                 assert action == self.state[0][1], "The action must be the first city to complete the tour"  
                 done = True              
-            else:
-                assert self.state[0][4+action] == 0, "The city has already been visited"
-                self.state[0][4+action] = 1
-                done = False
+            else: 
+                assert self.state[0][4+action] == 0, "The first city has already been visited"
+                self.state[0][4+action], done = 1, False
             self.state[0][3] = self.state[0][2] # previous city == current city
             self.state[0][2] = action # current city == first city
             reward = self._reward(self.state[0][3].type(th.int32), self.state[0][2].type(th.int32))

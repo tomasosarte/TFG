@@ -66,8 +66,5 @@ class Controller:
         
         Returns:
         """
-        self.lock.acquire()
-        try: probabilities, value = self.model(state)
-        finally: self.lock.release()
-        return probabilities
+        pass
     

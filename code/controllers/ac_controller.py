@@ -31,7 +31,9 @@ class ActorCriticController(Controller):
         Returns:
         """
         self.lock.acquire()
-        try: probabilities, value = self.model(state)
+        try: 
+            policy, value = self.model(state)
+            probabilities = th.nn.functional.softmax(policy, dim=-1)
         finally: self.lock.release()
         return probabilities
     

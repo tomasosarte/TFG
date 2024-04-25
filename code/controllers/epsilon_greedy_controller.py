@@ -39,66 +39,25 @@ class EpsilonGreedyController:
         controller_probabilities = self.controller.probabilities(state, **kwargs)
 
         # Get visited cities
-        visited_city_tensor = state[0][4:4+self.max_cities].view(-1).type(th.bool)
+        visited_cities = state[0][4:4+self.max_cities].view(-1).type(th.bool)
 
         # Get num of possible actions
-        num_possible_actions = (visited_city_tensor == False).sum()     
-        if num_possible_actions == 0: num_possible_actions = 1
+        num_possible_actions = (visited_cities == False).sum()
 
-        # Get probs and set to 0 probs where controller_probabilities is 0
-        probs = eps*th.ones(1, 1)/num_possible_actions + (1-eps) * controller_probabilities
-        
-        print(f"Probs: {probs}")
-        print(f"Visited city tensor: {visited_city_tensor}")
-        # Put 0 where the cities are visited
-        probs[visited_city_tensor.view(1, -1)] = 0
-
-        # If probs are all 0, set to 1 the first City
-        if (visited_city_tensor == False).sum() == 0:
-            first_city = state[0][1].item()
-            print(f"First city: {first_city}")
-            probs= th.zeros(probs.shape)
-            probs[0][int(first_city)] = 1
-
-        print(f"Probs after: {probs}")
-        print('-'*50)
-
+        if num_possible_actions == 0:
+            first_city = state[0][1]
+            assert first_city != -1, "First city is -1"
+            probs = th.zeros(controller_probabilities.shape).scatter_(dim=-1, index=first_city.type(th.int64).view(1, 1), src=th.tensor([[1.0]]))
+        else:
+            # Get probs and set to 0 probs where controller_probabilities is 0
+            probs = eps*th.ones(1, 1)/num_possible_actions + (1 - eps) * controller_probabilities
+            idx_visited_cities = visited_cities.nonzero()
+            probs[0][idx_visited_cities] = 0
+            
         return probs
-    
+        
     def choose_action(self, state, increase_counter=True, **kwargs):
         """ Returns the (possibly random) actions the agent takes when faced with "observation".
             Decays epsilon only when increase_counter=True". """
         if increase_counter: self.num_decisions += 1
-        # print(f"State: {state[0][4:4+self.max_cities]}")
-        # print(f"Probabilities:\n {self.probabilities(state)}")
         return th.distributions.Categorical(probs=self.probabilities(state)).sample().unsqueeze(0)
-
-    # def choose_action(self, state: th.Tensor, increase_counter=True, **kwargs) -> th.Tensor:
-    #     """ 
-    #     Returns the (possibly random) actions the agent takes when faced with "observation".
-    #     Decays epsilon only when increase_counter = True".   
-
-    #     Args:
-    #         state (th.Tensor): The state of the environment.
-    #         increase_counter (bool): Whether to increase the counter of decisions.
-    #         **kwargs: Additional arguments to pass to the controller.
-
-    #     Returns:
-    #         th.Tensor: The action to take.     
-    #     """
-    #     eps = self.epsilon()
-    #     # print(f"Epsilon: {eps}")
-    #     if increase_counter: self.num_decisions += 1
-    #     if np.random.rand() < eps: 
-    #         # Get not visited cities
-    #         visited_cities_tensor = state[0][4:4+self.max_cities].view(-1)
-
-    #         # Get indices of not visited cities
-    #         not_visited_cities_indexes = th.nonzero(visited_cities_tensor == 0).view(-1)
-
-    #         # Choose a random city if there are any left to visit
-    #         if not_visited_cities_indexes.shape[0] != 0:
-    #             node_to_visit = th.randint(0, not_visited_cities_indexes.shape[0], (1,)).item()
-    #             return not_visited_cities_indexes[node_to_visit].view(1, 1)
-        
-    #     return self.controller.choose_action(state, **kwargs)

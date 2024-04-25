@@ -5,6 +5,7 @@ from controllers.greedy_controller import GreedyController
 from utils.transition_batch import TransitionBatch
 from environments.environment_tsp import EnviornmentTSP
 from networks.basic_network import BasicNetwork
+from networks.more_basic_net import MoreBasicNetwork
 from generators.tsp_generator import TSPGenerator
 from controllers.ac_controller import ActorCriticController
 from controllers.epsilon_greedy_controller import EpsilonGreedyController
@@ -394,6 +395,24 @@ def test_basic_network():
 
     print("All tests passed")
 
+def test_more_basic_network():
+    """ Test the MoreBasicNetwork class. """
+    print("---------- Testing MoreBasicNetwork ----------")
+    params = default_params()
+    params['max_nodes_per_graph'] = 10
+    params['node_dimension'] = 2
+    net = MoreBasicNetwork(params)
+
+    # Get a state tensor
+    n_cities, current_city, first_city, previous_city = th.tensor([[5]]), th.tensor([[-1]]), th.tensor([[-1]]), th.tensor([[-1]])
+    cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
+    visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
+    state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
+
+    # Forward pass
+    policy, value = net(state)
+    print("All tests passed")
+
 def test_generator():
     """
     Test the TSPGenerator class.
@@ -440,7 +459,10 @@ def test_ACController():
     """
     print("---------- Testing ACController ----------")
     # Init network
-    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    params = default_params()
+    params['max_nodes_per_graph'] = 10
+    params['node_dimension'] = 2
+    network = MoreBasicNetwork(params)
     controller = ActorCriticController(network)
 
     # Test copy
@@ -478,7 +500,10 @@ def test_GreedyController():
     print("---------- Testing GreedyController ----------")
 
     # Create a Controller
-    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    params = default_params()
+    params['max_nodes_per_graph'] = 10
+    params['node_dimension'] = 2
+    network = MoreBasicNetwork(params)
     controller = GreedyController(network)
 
     # Get a state tensor
@@ -508,8 +533,13 @@ def test_EpsilonGreedyController():
     print("---------- Testing EpsilonGreedyController ----------")
 
     # Create a Controller
-    params = {'epsilon_start': 0.5, 'epsilon_finish': 0.05, 'epsilon_anneal_time': 10000, 'max_nodes_per_graph': 10}
-    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    params = default_params()
+    params['max_nodes_per_graph'] = 10
+    params['node_dimension'] = 2
+    params['epsilon_start'] = 0.5
+    params['epsilon_finish'] = 0.05
+    params['epsilon_anneal_time'] = 10000
+    network = MoreBasicNetwork(params)
     controller = ActorCriticController(network)
     controller = EpsilonGreedyController(controller, params, exploration_step=1)
 
@@ -571,8 +601,15 @@ def test_runner():
     """
     print("---------- Testing Runner ----------")
     # Create a Controller
-    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
+    params = default_params()
+    params['max_nodes_per_graph'] = 10
+    params['node_dimension'] = 2
+    params['epsilon_start'] = 0.5
+    params['epsilon_finish'] = 0.05
+    params['epsilon_anneal_time'] = 10000
+    network = MoreBasicNetwork(params)
     controller = ActorCriticController(network)
+    controller = EpsilonGreedyController(controller, params, exploration_step=1)
 
     # Create an Environment
     cities = th.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=th.float32)
@@ -615,11 +652,17 @@ def test_reinforce_learner():
     """
     
     print("---------- Testing ReinforceLearner ----------")
-    # Create network
-    network = BasicNetwork(max_nodes_per_graph = 10, node_dimension = 2, embedding_dimension = 4)
 
-    # Create controller
+    # Create controller & network
+    params = default_params()
+    params['max_nodes_per_graph'] = 10
+    params['node_dimension'] = 2
+    params['epsilon_start'] = 0.5
+    params['epsilon_finish'] = 0.05
+    params['epsilon_anneal_time'] = 10000
+    network = MoreBasicNetwork(params)
     controller = ActorCriticController(network)
+    controller = EpsilonGreedyController(controller, params, exploration_step=1)
 
     # Get initial parameters
     params = default_params()
@@ -743,15 +786,16 @@ def test_jupyter():
 if __name__ == '__main__':
     print("Running tests...")
 
-    # test_transition_batch()
-    # test_environment_tsp()
-    test_basic_network()
-    # test_generator()
-    # test_ACController()
-    # test_GreedyController()
-    # test_EpsilonGreedyController()
-    # test_runner()
-    # test_reinforce_learner()
+    test_transition_batch()
+    test_environment_tsp()
+    test_more_basic_network()
+    test_generator()
+    test_ACController()
+    test_GreedyController()
+    test_EpsilonGreedyController()
+    test_runner()
+    test_reinforce_learner()
     # test_ac_experiment()
     # test_jupyter()
+    # test_basic_network()
 

@@ -115,7 +115,7 @@ class ReinforceLearner:
                 _, next_values = self.model(batch['next_states'])
 
             # Combine policy and value loss
-            loss = self._policy_loss(policies, self._advantages(batch, next_values)) + self.value_loss_param * self._value_loss(batch, values, next_values)
+            loss = self._policy_loss(policies, self._advantages(batch, values, next_values)) + self.value_loss_param * self._value_loss(batch, values, next_values)
 
             # Add entropy regularization
             if self.entropy_regularization:
