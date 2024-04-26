@@ -87,7 +87,8 @@ class ReinforceLearner:
         Returns:
             Policy loss.
         """
-        return -(advantages.detach() * (pi+self.epsilon).log()).mean()
+        pi = pi.clamp(min=self.epsilon)
+        return -(advantages.detach() * pi.log()).mean()
 
     def train(self, batch: dict) -> float:
         """
