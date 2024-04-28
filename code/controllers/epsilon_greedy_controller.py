@@ -30,30 +30,23 @@ class EpsilonGreedyController:
         # print all variables
         return th.max(1 - self.num_decisions / (self.anneal_time - 1), th.tensor(0, dtype=th.float32)) * (self.max_epsilon - self.min_epsilon) + self.min_epsilon
 
-    def probabilities(self, state: th.Tensor, **kwargs) -> th.Tensor:
+    def probabilities(self, state: th.Tensor, out: th.Tensor = None) -> th.Tensor:
 
         """ 
         Returns the probabilities with which the agent would choose actions. 
         """
         eps = self.epsilon()
-        controller_probabilities = self.controller.probabilities(state, **kwargs)
 
-        # Get visited cities
-        visited_cities = state[0][4:4+self.max_cities].view(-1).type(th.bool)
+        # probabilities from controller
+        controller_probabilities = self.controller.probabilities(state, out)
 
-        # Get num of possible actions
-        num_possible_actions = (visited_cities == False).sum()
+        # Get num of controller_probabilities that are not 0
+        num_possible_actions = (controller_probabilities > 0).sum(dim=-1).view(-1, 1)
 
-        if num_possible_actions == 0:
-            first_city = state[0][1]
-            assert first_city != -1, "First city is -1"
-            probs = th.zeros(controller_probabilities.shape).scatter_(dim=-1, index=first_city.type(th.int64).view(1, 1), src=th.tensor([[1.0]]))
-        else:
-            # Get probs and set to 0 probs where controller_probabilities is 0
-            probs = eps*th.ones(1, 1)/num_possible_actions + (1 - eps) * controller_probabilities
-            idx_visited_cities = visited_cities.nonzero()
-            probs[0][idx_visited_cities] = 0
-            
+        # Add epsilon to all actions that are possible
+        eps_padding = eps*th.ones(controller_probabilities.size(0), 1)/num_possible_actions
+        probs = eps_padding + (1 - eps) * controller_probabilities
+        probs[probs == eps_padding] = 0.0
         return probs
         
     def choose_action(self, state, increase_counter=True, **kwargs):
@@ -61,3 +54,6 @@ class EpsilonGreedyController:
             Decays epsilon only when increase_counter=True". """
         if increase_counter: self.num_decisions += 1
         return th.distributions.Categorical(probs=self.probabilities(state)).sample().unsqueeze(0)
+    
+
+

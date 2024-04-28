@@ -37,7 +37,6 @@ class Experiment:
         """ Plots logged training results. Use "update=True" if the plot is continuously updated
             or use "update=False" if this is the final call (otherwise there will be double plotting). """ 
         # Smooth curves
-        # print("Episode losses: \n", self.episode_losses)
         window = max(int(len(self.episode_returns) / 50), 10)
         if len(self.episode_losses) < window + 2: return
         returns = np.convolve(self.episode_returns, np.ones(window)/window, 'valid')

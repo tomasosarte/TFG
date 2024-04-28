@@ -87,7 +87,6 @@ class ReinforceLearner:
         Returns:
             Policy loss.
         """
-        pi = pi.clamp(min=self.epsilon)
         return -(advantages.detach() * pi.log()).mean()
 
     def train(self, batch: dict) -> float:
@@ -106,22 +105,16 @@ class ReinforceLearner:
         self.old_pi, loss_sum = None, 0.0
         
         for _ in range(1 + self.offpolicy_iterations):
-
-            # Compute policy and values
-            policies, values = self.model(batch['states']) 
-
-            # Compute next values if needed
-            next_values = None
-            if self.compute_next_val:
-                _, next_values = self.model(batch['next_states'])
-
+            # Compute the model-output for given batch
+            out = self.model(batch['states'])   # compute both policy and values
+            val = out[:, -1].unsqueeze(dim=-1)  # last entry are the values
+            next_val = self.model(batch['next_states'])[:, -1].unsqueeze(dim=-1) if self.compute_next_val else None
+            pi = self.controller.probabilities(state=batch['states'], out=out[:, :-1]).gather(dim=-1, index=batch['actions'])
             # Combine policy and value loss
-            loss = self._policy_loss(policies, self._advantages(batch, values, next_values)) + self.value_loss_param * self._value_loss(batch, values, next_values)
-
+            loss = self._policy_loss(pi, self._advantages(batch, val, next_val)) \
+                    + self.value_loss_param * self._value_loss(batch, val, next_val)
             # Add entropy regularization
-            if self.entropy_regularization:
-                loss -= self.entropy_weight * (policies * (policies+self.epsilon).log()).sum(dim=1).mean()
-
+            if self.entropy_regularization: loss -= self.entropy_weight * (pi * pi.log()).sum(dim=1).mean()
             # Backpropagate loss
             self.optimizer.zero_grad()
             loss.backward()

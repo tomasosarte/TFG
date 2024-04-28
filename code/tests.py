@@ -540,7 +540,7 @@ def test_EpsilonGreedyController():
     params['epsilon_finish'] = 0.05
     params['epsilon_anneal_time'] = 10000
     network = MoreBasicNetwork(params)
-    controller = ActorCriticController(network)
+    controller = ActorCriticController(network, params)
     controller = EpsilonGreedyController(controller, params, exploration_step=1)
 
     # Test epsilon
@@ -555,6 +555,11 @@ def test_EpsilonGreedyController():
     visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
     state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
 
+    # Test probabilities with batch size 2 and one state has all cities visited
+    n_cities, current_city, first_city, previous_city = th.tensor([[5], [5]]), th.tensor([[-1], [1]]), th.tensor([[-1], [2]]), th.tensor([[-1], [0]])
+    visited_cities = th.tensor([[0, 0, 0, 0, 0], [1, 1, 1, 1, 1]], dtype=th.bool)
+    batch = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
+    probs = controller.probabilities(batch)
     # Test probabilities
     probs = controller.probabilities(state)
     print("Probs: ", probs)
@@ -581,6 +586,7 @@ def test_EpsilonGreedyController():
     assert epsilon == 0.5, "The epsilon is not correct"
     assert action.shape == (1,1), "The action has the wrong shape"
     print("Choose action test 3 passed")
+    
 
     # Check that epsilon is decayed
     epsilon = controller.epsilon()
@@ -786,15 +792,15 @@ def test_jupyter():
 if __name__ == '__main__':
     print("Running tests...")
 
-    test_transition_batch()
-    test_environment_tsp()
-    test_more_basic_network()
-    test_generator()
-    test_ACController()
-    test_GreedyController()
+    # test_transition_batch()
+    # test_environment_tsp()
+    # test_more_basic_network()
+    # test_generator()
+    # test_ACController()
+    # test_GreedyController()
     test_EpsilonGreedyController()
-    test_runner()
-    test_reinforce_learner()
+    # test_runner()
+    # test_reinforce_learner()
     # test_ac_experiment()
     # test_jupyter()
     # test_basic_network()

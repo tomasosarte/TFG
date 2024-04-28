@@ -26,11 +26,8 @@ class MoreBasicNetwork(nn.Module):
             nn.Linear(self.input_size, 128), nn.ReLU(),
             nn.Linear(128, 512), nn.ReLU(),
             nn.Linear(512, 128), nn.ReLU(),
-            nn.Linear(128, self.output_size), nn.ReLU())
+            nn.Linear(128, self.output_size))
     
     def forward(self, state_batch: th.Tensor) -> th.Tensor:
         assert state_batch.shape[1] == self.input_size, "Input size does not match the expected size."
-        output = self.layers(state_batch)
-        value = output[:, -1].view(-1, 1)
-        policy = output[:, :-1]
-        return policy, value
+        return self.layers(state_batch)

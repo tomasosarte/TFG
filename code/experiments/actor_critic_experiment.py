@@ -18,7 +18,7 @@ class ActorCriticExperiment(Experiment):
     """
     Performs online actor-critic training overwriting the Experiment object.
     """
-    def __init__(self, params: dict, model: Module, env: Environment, learner = None, **kwargs) -> None:
+    def __init__(self, params: dict, model: Module, env: Environment, learner: ReinforceLearner, **kwargs) -> None:
         """
         Initialize the ActorCriticExperiment object overwriting the Experiment init.
 
@@ -36,12 +36,12 @@ class ActorCriticExperiment(Experiment):
         self.max_steps = params.get('max_steps', int(1E9))
         self.grad_repeats = params.get('grad_repeats', 1)
         self.batch_size = params.get('batch_size', 1024)
-        self.controller = ActorCriticController(model)
+        self.controller = ActorCriticController(model, params)
         self.controller = EpsilonGreedyController(controller=self.controller, params=params)
         self.env = env
         self.runner = MultiRunner(self.controller, env=env, params=params) if params.get('multi_runner', True) \
                       else Runner(self.controller, env=env, params=params)
-        self.learner = ReinforceLearner(model, params=params) if learner is None else learner
+        self.learner = learner
         self.learner.set_controller(self.controller)
 
     def run(self) -> None:
@@ -99,7 +99,6 @@ class ActorCriticExperiment(Experiment):
         batch = self.runner.run_episode()
         states = batch['buffer']['states']
         actions = batch['buffer']['actions']
-
         cities = self.env.cities
 
         # Create a plot
