@@ -32,6 +32,7 @@ class Experiment:
         self.episode_losses  = []
         self.env_steps = []
         self.total_run_time = 0.0
+        self.device = params.get('device', 'cpu')
 
     def plot_training(self, update=False):
         """ Plots logged training results. Use "update=True" if the plot is continuously updated

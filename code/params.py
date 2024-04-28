@@ -1,3 +1,5 @@
+import torch as th
+
 def default_params():
     """ These are the default parameters used in the framework. """
     return {
@@ -48,6 +50,9 @@ def default_params():
 
             # Network parameters
             'embedding_dimension': 4,        # dimension of the node embeddings
+
+            # Device
+            'device': 'cuda' if th.cuda.is_available() else 'cpu', # device used for training
            }
 
 def set_tsp_params(params, max_nodes_per_graph, embedding_dimension, max_episodes, episodes_in_batch):

@@ -9,7 +9,7 @@ class BiasedReinforceLearner (ReinforceLearner):
         self.value_criterion = th.nn.MSELoss()
         self.advantage_bias = params.get('advantage_bias', True)
         self.value_targets = params.get('value_targets', 'returns')
-        self.gamma = params.get('gamma')
+        self.gamma = params.get('gamma', 0.99)
         self.compute_next_val = (self.value_targets == 'td')
     
     def _advantages(self, batch: dict, values: th.float32 = None, next_values: th.float32 = None):

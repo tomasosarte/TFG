@@ -22,7 +22,17 @@ class TransitionBatch:
         max_size = self.max_size if max_size is None else max_size
         batch_size = self.batch_size if batch_size is None else batch_size
         return TransitionBatch(max_size=max_size, transition_format={}, batch_size=batch_size)
-        
+    
+    def to(self, device):
+        """ Move all tensors in the dictionary to the specified device. """
+        self.lock.acquire()
+        try:
+            for key in self.dict.keys():
+                self.dict[key] = self.dict[key].to(device)
+        finally:
+            self.lock.release()
+        return self
+    
     def __getitem__(self, key):
         """ Access the TransitionBatch with the [] operator. Use as key either 
             - the string name of a variable to get the full tensor of that variable,

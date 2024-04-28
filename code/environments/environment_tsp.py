@@ -6,7 +6,7 @@ class EnviornmentTSP(Environment):
     This class is used to represent the enviornment of a TSP instance.
     """
 
-    def __init__(self, cities: th.Tensor, node_dimension: int = 2, max_nodes_per_graph: int = 10):
+    def __init__(self, cities: th.Tensor, params: dict = {}):
         """
         Constructor for the TSP environment class.
         
@@ -19,6 +19,8 @@ class EnviornmentTSP(Environment):
             None
         """
         super().__init__()
+        node_dimension = params.get('node_dimension', 2)
+        max_nodes_per_graph = params.get('max_nodes_per_graph', 20)
         assert cities.shape[1] == node_dimension, "The cities tensor must have shape (n, 2)"
 
         # Init_vars

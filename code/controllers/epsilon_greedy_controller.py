@@ -14,9 +14,6 @@ class EpsilonGreedyController:
         self.anneal_time = th.tensor(params.get('epsilon_anneal_time', 10000) / exploration_step, dtype=th.float32)
         self.num_decisions = th.tensor(0, dtype=th.float32)
 
-        # -------------- Environment tsp --------------
-        self.max_cities = params.get('max_nodes_per_graph', 20)
-
     def epsilon(self) -> float:
         """
         Returns current epsilon.

@@ -28,10 +28,6 @@ class ReinforceLearner:
         self.compute_next_val = False  # whether the next state's value is computed
         self.old_pi = None  # this variable can be used for your PPO implementation
 
-        # Optimizer used in the training process.
-        self.max_cities = params.get('max_cities', 20)
-        self.epsilon = 1e-8
-
         # Entropy regularization
         self.entropy_weight = params.get('entropy_weight', 0.01)
         self.entropy_regularization = params.get('entropy_regularization', False)
@@ -121,5 +117,5 @@ class ReinforceLearner:
             grad_norm = th.nn.utils.clip_grad_norm_(self.all_parameters, self.grad_norm_clip)
             self.optimizer.step()
             loss_sum += loss.item()
-
+    
         return loss_sum
