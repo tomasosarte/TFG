@@ -13,11 +13,12 @@ class Runner:
         self.controller = controller
         self.epi_len = params.get('max_episode_length', self.env._max_episode_steps)
         self.gamma = params.get('gamma', 0.99)
+        self.device = params.get('device', 'cpu')
 
         # Set up current state and time step
         self.state = None
         self.sum_rewards = 0
-        self.time = 0
+        self.time = th.tensor(0, dtype=th.float32)
         self.state_shape = self.env.state_shape
         self._next_step() 
 
@@ -125,7 +126,7 @@ class Runner:
         # Return statistics (mean reward, mean length, and environment steps)
         if return_dict is None: return_dict = {}
         return_dict.update({'buffer': transition_buffer,
-                            'episode_reward': None if len(episode_rewards) == 0 else np.mean(episode_rewards),
+                            'episode_reward': None if len(episode_rewards) == 0 else np.mean([r.cpu() for r in episode_rewards]),
                             'episode_length': None if len(episode_lengths) == 0 else np.mean(episode_lengths),
                             'env_steps': time})
         

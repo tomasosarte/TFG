@@ -1,4 +1,5 @@
 import torch as th
+import threading
 from environments.environment import Environment
 
 class EnviornmentTSP(Environment):
@@ -48,6 +49,8 @@ class EnviornmentTSP(Environment):
         first_city, current_city, previous_city = symbol, symbol, symbol
         self.state = th.cat((th.tensor([self.n_cities]), first_city, current_city, previous_city, visited_cities, flat_cities)).unsqueeze(0)
         self.state_shape = (4 + max_nodes_per_graph + max_nodes_per_graph*node_dimension,)
+
+        
     
     def _reward(self, city1: int, city2: int):
         """
@@ -107,25 +110,28 @@ class EnviornmentTSP(Environment):
             info dict: A dictionary of additional information.
         """
         # Save current state
-        state = self._get_state() 
-        if self.state[0][1] == -1:
-            assert self.state[0][4+action] == 0, "The first city has already been visited"
-            self.state[0][1] = action # first city == action
-            self.state[0][2] = action # current city == action
-            self.state[0][4+action], reward, done = 1, 0, False
-        else:
-            # Determine if the episode is done with all cities visited
-            all_visited = th.sum(self.state[0][4:4+self.n_cities]) == self.n_cities
-            if all_visited:
-                assert action == self.state[0][1], "The action must be the first city to complete the tour"  
-                done = True              
-            else: 
+        self.lock.acquire()
+        try:
+            state = self._get_state() 
+            if self.state[0][1] == -1:
                 assert self.state[0][4+action] == 0, "The first city has already been visited"
-                self.state[0][4+action], done = 1, False
-            self.state[0][3] = self.state[0][2] # previous city == current city
-            self.state[0][2] = action # current city == first city
-            reward = self._reward(self.state[0][3].type(th.int32), self.state[0][2].type(th.int32))
-                
-        self.elapsed_time += 1
-        next_state = self._get_state()
+                self.state[0][1] = action # first city == action
+                self.state[0][2] = action # current city == action
+                self.state[0][4+action], reward, done = 1, 0, False
+            else:
+                # Determine if the episode is done with all cities visited
+                all_visited = th.sum(self.state[0][4:4+self.n_cities]) == self.n_cities
+                if all_visited:
+                    assert action == self.state[0][1], "The action must be the first city to complete the tour"  
+                    done = True              
+                else: 
+                    assert self.state[0][4+action] == 0, "The first city has already been visited"
+                    self.state[0][4+action], done = 1, False
+                self.state[0][3] = self.state[0][2] # previous city == current city
+                self.state[0][2] = action # current city == first city
+                reward = self._reward(self.state[0][3].type(th.int32), self.state[0][2].type(th.int32))
+                    
+            self.elapsed_time += 1
+            next_state = self._get_state()
+        finally: self.lock.release()
         return state, th.tensor([[reward]], dtype=th.float32), th.tensor([[done]]), next_state

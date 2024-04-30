@@ -64,6 +64,9 @@ class TSPGenerator:
         Returns: 
             None
         """
+        if cities.is_cuda:
+            cities = cities.cpu() 
+
         # Extract coordinates
         x = cities[:, 0]
         y = cities[:, 1]

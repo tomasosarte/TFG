@@ -1,4 +1,5 @@
 import torch as th
+from threading import Lock
 
 class Environment:
     """
@@ -16,6 +17,7 @@ class Environment:
             None
         """
         # Elapsed time in the environment
+        self.lock = Lock()
         self.elapsed_time = 0
         self.max_episode_length = 0
         self.state_shape = None

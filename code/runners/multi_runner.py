@@ -1,3 +1,5 @@
+from controllers.controller import Controller
+from environments.environment import Environment
 from runners.runner import Runner
 from utils.transition_batch import TransitionBatch
 import numpy as np
@@ -5,12 +7,12 @@ import threading
 
 class MultiRunner:
     """ Simple class that runs multiple Runner objects in parallel and merges their outputs. """
-    def __init__(self, controller, params={}):
+    def __init__(self, controller: Controller, env: Environment, params: dict = {}):
         self.workers = []
         self.runners = []
         n = params.get('parallel_environments', 1)
         for _ in range(n):
-            self.runners.append(Runner(controller=controller, params=params))
+            self.runners.append(Runner(controller=controller, env=env, params=params))
             
     def transition_format(self):
         """ Same transition-format as underlying Runners. """

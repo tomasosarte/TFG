@@ -32,7 +32,6 @@ class ActorCriticExperiment(Experiment):
             None
         """
         super().__init__(params, model, env, **kwargs)
-        model.to(self.device) # Send the model to the device
         self.max_episodes = params.get('max_episodes', int(1E6))
         self.max_steps = params.get('max_steps', int(1E9))
         self.grad_repeats = params.get('grad_repeats', 1)
@@ -61,7 +60,6 @@ class ActorCriticExperiment(Experiment):
             self.plot_training(update=True)
         # Run the experiment
         transition_buffer = TransitionBatch(self.batch_size, self.runner.transition_format(), self.batch_size)
-        transition_buffer.to(self.device)
         env_steps = 0 if len(self.env_steps) == 0 else self.env_steps[-1]
         for episode in range(self.max_episodes):
             # Run the policy fot batch_size steps
@@ -100,9 +98,9 @@ class ActorCriticExperiment(Experiment):
             None
         """
         batch = self.runner.run_episode()
-        states = batch['buffer']['states']
-        actions = batch['buffer']['actions']
-        cities = self.env.cities
+        states = batch['buffer']['states'].cpu()
+        actions = batch['buffer']['actions'].cpu()
+        cities = self.env.cities.cpu()
 
         # Create a plot
         fig = plt.figure()

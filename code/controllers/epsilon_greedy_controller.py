@@ -1,4 +1,3 @@
-import numpy as np
 import torch as th
 from controllers.controller import Controller
 
@@ -13,6 +12,7 @@ class EpsilonGreedyController:
         self.min_epsilon = th.tensor(params.get('epsilon_finish', 0.05), dtype=th.float32)
         self.anneal_time = th.tensor(params.get('epsilon_anneal_time', 10000) / exploration_step, dtype=th.float32)
         self.num_decisions = th.tensor(0, dtype=th.float32)
+        self.device = params.get('device', 'cpu')
 
     def epsilon(self) -> float:
         """
