@@ -72,7 +72,6 @@ class ActorCriticExperiment(Experiment):
                 self.episode_lengths.append(batch['episode_length'])
                 self.episode_returns.append(batch['episode_reward'])
                 
-
             # Make a gradient update step
             loss = self.learner.train(batch['buffer'])
             self.episode_losses.append(loss)

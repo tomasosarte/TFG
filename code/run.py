@@ -24,7 +24,7 @@ rollouts_per_batch = 50
 pct_epsilon_anneal_time = 0.75
 max_episodes = 750
 
-max_nodes_per_graph = 100
+max_nodes_per_graph = 10
 params['problem'] = 'tsp'
 params['node_dimension'] = 2
 params['max_nodes_per_graph'] = max_nodes_per_graph
@@ -56,7 +56,7 @@ num_nodes = 10
 cities = th.load(f"training/tsp/size_{num_nodes}/instance_{instance}.pt") 
 cities = cities.to(params['device'])
 
-wandb.init(project="tsp", config=params)
+if params['wandb']: wandb.init(project="tsp", config=params)
 
 # Run experiment
 model = MoreBasicNetwork(params)
@@ -64,4 +64,4 @@ env = EnviornmentTSP(cities, params)
 experiment = ActorCriticExperiment(params, model, env, ReinforceLearner(model, params))
 episode_returns, episode_lengths, episode_losses, env_steps = experiment.run()
 
-wandb.finish()
+if params['wandb']: wandb.finish()
