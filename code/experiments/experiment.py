@@ -25,7 +25,7 @@ class Experiment:
         self.params = params
         self.plot_frequency = params.get('plot_frequency', 100)
         self.plot_train_samples = params.get('plot_train_samples', True)
-        self.print_when_plot = params.get('print_when_plot', False)
+        self.debug_messages = params.get('debug_messages', False)
         self.print_dots = params.get('print_dots', False)
         self.episode_returns = []
         self.episode_lengths = []
@@ -33,6 +33,8 @@ class Experiment:
         self.env_steps = []
         self.total_run_time = 0.0
         self.device = params.get('device', 'cpu')
+        self.use_tqdm = params.get('use_tqdm', False)
+        self.final_plot = params.get('final_plot', False)
 
     def plot_training(self, update=False):
         """ Plots logged training results. Use "update=True" if the plot is continuously updated

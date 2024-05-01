@@ -6,7 +6,7 @@ def default_params():
             # Debugging outputs and plotting during training
             'plot_frequency': 10,             # plots a debug message avery n steps
             'plot_train_samples': True,       # whether the x-axis is env.steps (True) or episodes (False)
-            'print_when_plot': False,          # prints debug message if True
+            'debug_messages': False,          # prints debug message if True
             'print_dots': False,              # prints dots for every gradient update
 
             # Environment parameters
@@ -49,10 +49,12 @@ def default_params():
             'ppo_clip_eps': 0.1,              # the epsilon for the PPO loss
 
             # Network parameters
-            'embedding_dimension': 4,        # dimension of the node embeddings
+            'embedding_dimension': 4,         # dimension of the node embeddings
 
             # Device
-            'device': 'cuda' if th.cuda.is_available() else 'cpu', # device used for training
+            'device': 'cpu',                  # device used for training
+            'use_tqdm': False,                # whether to use tqdm for progress bars
+            'final_plot': False,              # whether to plot the final results
            }
 
 def set_tsp_params(params, max_nodes_per_graph, embedding_dimension, max_episodes, episodes_in_batch):

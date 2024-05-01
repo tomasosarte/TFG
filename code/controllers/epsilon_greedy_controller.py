@@ -8,11 +8,12 @@ class EpsilonGreedyController:
     """
     def __init__(self, controller: Controller, params: dict = {}, exploration_step: int = 1) -> None:
         self.controller = controller
-        self.max_epsilon = th.tensor(params.get('epsilon_start', 1.0), dtype=th.float32)
-        self.min_epsilon = th.tensor(params.get('epsilon_finish', 0.05), dtype=th.float32)
+        self.max_epsilon = th.tensor(params.get('epsilon_start', 1.0), dtype=th.float16)
+        self.min_epsilon = th.tensor(params.get('epsilon_finish', 0.05), dtype=th.float16)
         self.anneal_time = th.tensor(params.get('epsilon_anneal_time', 10000) / exploration_step, dtype=th.float32)
         self.num_decisions = th.tensor(0, dtype=th.float32)
         self.device = params.get('device', 'cpu')
+        self.zero = th.tensor(0, dtype=th.float16)
 
     def epsilon(self) -> float:
         """
@@ -25,7 +26,7 @@ class EpsilonGreedyController:
             float: current epsilon
         """
         # print all variables
-        return th.max(1 - self.num_decisions / (self.anneal_time - 1), th.tensor(0, dtype=th.float32)) * (self.max_epsilon - self.min_epsilon) + self.min_epsilon
+        return th.max(1 - self.num_decisions / (self.anneal_time - 1), self.zero) * (self.max_epsilon - self.min_epsilon) + self.min_epsilon
 
     def probabilities(self, state: th.Tensor, out: th.Tensor = None) -> th.Tensor:
 

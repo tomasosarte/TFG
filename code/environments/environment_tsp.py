@@ -50,8 +50,6 @@ class EnviornmentTSP(Environment):
         self.state = th.cat((th.tensor([self.n_cities]), first_city, current_city, previous_city, visited_cities, flat_cities)).unsqueeze(0)
         self.state_shape = (4 + max_nodes_per_graph + max_nodes_per_graph*node_dimension,)
 
-        
-    
     def _reward(self, city1: int, city2: int):
         """
         Calculates the reward for moving from city1 to city2.

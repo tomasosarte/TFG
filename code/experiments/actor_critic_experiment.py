@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import torch as th
 from IPython.display import display, clear_output
 import pylab as pl
+from tqdm import tqdm
 from IPython import display
 
 class ActorCriticExperiment(Experiment):
@@ -44,7 +45,6 @@ class ActorCriticExperiment(Experiment):
         self.learner = learner
         self.learner.set_controller(self.controller)
         
-
     def run(self) -> None:
         """
         Overriding the run method to perform online actor-critic training.
@@ -61,7 +61,8 @@ class ActorCriticExperiment(Experiment):
         # Run the experiment
         transition_buffer = TransitionBatch(self.batch_size, self.runner.transition_format(), self.batch_size)
         env_steps = 0 if len(self.env_steps) == 0 else self.env_steps[-1]
-        for episode in range(self.max_episodes):
+        episodes = tqdm(range(self.max_episodes)) if self.use_tqdm  else range(self.max_episodes)
+        for episode in episodes:
             # Run the policy fot batch_size steps
             batch = self.runner.run(self.batch_size, transition_buffer)
             env_steps += batch['env_steps']
@@ -79,12 +80,15 @@ class ActorCriticExperiment(Experiment):
                 print('.', end='')
             if self.plot_frequency is not None and (episode + 1) % self.plot_frequency == 0 and len(self.episode_losses) > 2:
                 self.plot_training(update=True)
-                if self.print_when_plot:
-                    print('Iteration %u, 100-epi-return %.4g +- %.3g, length %u, loss %g' % 
-                          (len(self.episode_returns), np.mean(self.episode_returns[-100:]), 
-                           np.std(self.episode_returns[-100:]), np.mean(self.episode_lengths[-100:]), 
-                           np.mean(self.episode_losses[-100:])))
-                    
+            if self.debug_messages and (episode + 1) % 10 == 0 and len(self.episode_losses) > 2:
+                print('Iteration %u, 100-epi-return %.4g +- %.3g, length %u, loss %g' % 
+                        (len(self.episode_returns), np.mean(self.episode_returns[-100:]), 
+                        np.std(self.episode_returns[-100:]), np.mean(self.episode_lengths[-100:]), 
+                        np.mean(self.episode_losses[-100:])))
+        
+        # Plot the final results
+        if self.final_plot:
+            self.plot_training(update=False)
         return np.mean(self.episode_returns[-100:])
     
     def plot_rollout(self) -> None:
