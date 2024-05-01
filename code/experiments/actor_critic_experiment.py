@@ -14,6 +14,7 @@ from IPython.display import display, clear_output
 import pylab as pl
 from tqdm import tqdm
 from IPython import display
+import wandb
 
 class ActorCriticExperiment(Experiment):
     """
@@ -70,9 +71,13 @@ class ActorCriticExperiment(Experiment):
                 self.env_steps.append(env_steps)
                 self.episode_lengths.append(batch['episode_length'])
                 self.episode_returns.append(batch['episode_reward'])
+                
+
             # Make a gradient update step
             loss = self.learner.train(batch['buffer'])
             self.episode_losses.append(loss)
+            if self.wandb: 
+                wandb.log({'episode_return': batch['episode_reward'], 'episode_length': batch['episode_length'], 'loss': loss})
             # Quit if maximal number of environment steps is reached
             if env_steps >= self.max_steps: break
             # Show intermediate results
@@ -89,7 +94,8 @@ class ActorCriticExperiment(Experiment):
         # Plot the final results
         if self.final_plot:
             self.plot_training(update=False)
-        return np.mean(self.episode_returns[-100:])
+        
+        return self.episode_returns, self.episode_lengths, self.episode_losses, self.env_steps
     
     def plot_rollout(self) -> None:
         """

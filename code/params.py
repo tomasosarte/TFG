@@ -55,6 +55,7 @@ def default_params():
             'device': 'cpu',                  # device used for training
             'use_tqdm': False,                # whether to use tqdm for progress bars
             'final_plot': False,              # whether to plot the final results
+            'wandb': False                    # whether to use wandb for logging
            }
 
 def set_tsp_params(params, max_nodes_per_graph, embedding_dimension, max_episodes, episodes_in_batch):

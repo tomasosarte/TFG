@@ -35,6 +35,7 @@ class Experiment:
         self.device = params.get('device', 'cpu')
         self.use_tqdm = params.get('use_tqdm', False)
         self.final_plot = params.get('final_plot', False)
+        self.wandb = params.get('wandb', False)
 
     def plot_training(self, update=False):
         """ Plots logged training results. Use "update=True" if the plot is continuously updated
@@ -77,6 +78,9 @@ class Experiment:
         display.clear_output(wait=True)
         if update:
             display.display(pl.gcf())
+
+        # Save the plot
+
 
     def close(self):
         """ Frees all allocated runtime ressources, but allows to continue the experiment later. 

@@ -1,9 +1,9 @@
 import torch as th
-import optuna
+import wandb
 
 from environments.environment_tsp import EnviornmentTSP
 from networks.more_basic_net import MoreBasicNetwork
-from params import default_params, set_tsp_params
+from params import default_params
 from experiments.actor_critic_experiment import ActorCriticExperiment
 
 # ------------------------- LEARNERS --------------------------------
@@ -43,7 +43,8 @@ params['plot_frequency'] = None
 params['plot_train_samples'] = False
 params['debug_messages'] = True
 params['use_tqdm'] = True
-params['final_plot'] = True
+params['final_plot'] = False
+params['wandb'] = True
 
 # params['device'] = 'cuda' if th.cuda.is_available() else 'cpu'
 print("Device in use: ", params['device'])
@@ -55,8 +56,12 @@ num_nodes = 10
 cities = th.load(f"training/tsp/size_{num_nodes}/instance_{instance}.pt") 
 cities = cities.to(params['device'])
 
+wandb.init(project="tsp", config=params)
+
 # Run experiment
 model = MoreBasicNetwork(params)
 env = EnviornmentTSP(cities, params)
 experiment = ActorCriticExperiment(params, model, env, ReinforceLearner(model, params))
-experiment.run()
+episode_returns, episode_lengths, episode_losses, env_steps = experiment.run()
+
+wandb.finish()
