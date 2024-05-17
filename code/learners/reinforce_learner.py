@@ -106,9 +106,10 @@ class ReinforceLearner:
             val = out[:, -1].unsqueeze(dim=-1)  # last entry are the values
             next_val = self.model(batch['next_states'])[:, -1].unsqueeze(dim=-1) if self.compute_next_val else None
             pi = self.controller.probabilities(state=batch['states'], out=out[:, :-1]).gather(dim=-1, index=batch['actions'])
+            
             # Combine policy and value loss
-            loss = self._policy_loss(pi, self._advantages(batch, val, next_val)) \
-                    + self.value_loss_param * self._value_loss(batch, val, next_val)
+            loss = self._policy_loss(pi, self._advantages(batch, val, next_val)) + self.value_loss_param * self._value_loss(batch, val, next_val)
+
             # Add entropy regularization
             if self.entropy_regularization: loss -= self.entropy_weight * (pi * pi.log()).sum(dim=1).mean()
             # Backpropagate loss

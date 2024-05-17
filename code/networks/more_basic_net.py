@@ -30,5 +30,4 @@ class MoreBasicNetwork(nn.Module):
     
     def forward(self, state_batch: th.Tensor) -> th.Tensor:
         assert state_batch.shape[1] == self.input_size, "Input size does not match the expected size."
-        print
         return self.layers(state_batch)

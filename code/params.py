@@ -30,6 +30,7 @@ def default_params():
             'epsilon_start': 1,               # annealing starts at this epsilon
             'entropy_weight': 0.1,            # weight of the entropy term in the loss
             'entropy_regularization': True,   # whether entropy regularization is used
+            'epsilon_decay': 'linear',        # either 'linear' or 'exponential'
 
             # Optimization parameters
             'lr': 5E-4,                       # learning rate of optimizer
@@ -50,6 +51,15 @@ def default_params():
 
             # Network parameters
             'embedding_dimension': 4,         # dimension of the node embeddings
+            'encoder_layers': 6,              # number of layers in the encoder
+            'model_dimension': 512,           # dimension of the model
+            'dimension_k': 64,                # dimension of the key and query vectors
+            'dimension_v': 64,                # dimension of the value vectors
+            'num_heads': 4,                   # number of heads in the multihead attention
+            'num_layers': 3,                  # number of layers in the model
+            'normalization': 'batch',         # either 'batch' or 'layer' normalization
+            'feed_forward_hidden': 512,       # dimension of the hidden layer in the feed forward network
+            'embed_dim': 4,                   # dimension of the embeddings
 
             # Device
             'device': 'cpu',                  # device used for training

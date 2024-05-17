@@ -275,6 +275,43 @@ def test_environment_tsp():
     state = env.reset()
     test_state(state, -1, -1, -1, th.tensor([0, 0, 0, 0, 0], dtype=th.bool), cities)
     print("Reset test passed again")
+
+    # Init env wihtout cities
+    env = EnviornmentTSP()
+    cities = env.cities
+    print("Cities: ", cities)
+    env.reset()
+    new_cities = env.cities 
+    print("New cities: ", new_cities)
+    _, reward, done, next_state = env.step(0)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(1)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(2)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(3)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(4)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(5)
+    _, reward, done, next_state = env.step(5)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(6)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(7)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(8)
+    print("Next state: ", next_state)
+    _, reward, done, next_state = env.step(9)
+
+    _, reward, done, next_state = env.step(0)
+
+    print("Next state: ", next_state)
+    env.reset()
+    print("New cities: ", env.cities)
+    print("New state: ", env.state)
+
+
     print("All tests passed")
 
 def test_basic_network():
@@ -793,12 +830,12 @@ if __name__ == '__main__':
     print("Running tests...")
 
     # test_transition_batch()
-    # test_environment_tsp()
+    test_environment_tsp()
     # test_more_basic_network()
     # test_generator()
     # test_ACController()
     # test_GreedyController()
-    test_EpsilonGreedyController()
+    # test_EpsilonGreedyController()
     # test_runner()
     # test_reinforce_learner()
     # test_ac_experiment()
