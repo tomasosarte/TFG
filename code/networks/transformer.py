@@ -31,6 +31,37 @@ class CustomSkipConnection(th.nn.Module):
 
     def forward(self, input, mask=None):
         return input + self.module(input, mask=mask)
+
+class CustomNormalization(th.nn.Module):
+    def __init__(self, embed_dim, normalization='batch'):
+        super(CustomNormalization, self).__init__()
+
+        normalizer_class = {
+            'batch': CustomBatchNorm1d,
+            'instance': CustomInstanceNorm1d
+        }.get(normalization, None)
+
+        self.normalizer = normalizer_class(embed_dim, affine=True)
+
+        # Normalization by default initializes affine parameters with bias 0 and weight unif(0,1) which is too large!
+        # self.init_parameters()
+
+    def init_parameters(self):
+
+        for name, param in self.named_parameters():
+            stdv = 1. / math.sqrt(param.size(-1))
+            param.data.uniform_(-stdv, stdv)
+
+    def forward(self, input, mask=None):
+
+        if isinstance(self.normalizer, CustomBatchNorm1d):
+            return self.normalizer(input.view(-1, input.size(-1))).view(*input.size())
+        elif isinstance(self.normalizer, CustomInstanceNorm1d):
+            return self.normalizer(input.permute(0, 2, 1)).permute(0, 2, 1)
+        else:
+            assert self.normalizer is None, "Unknown normalizer type"
+            return input
+
 # --------------------------------------------------------------
 
 class SkipConnection(th.nn.Module):
@@ -180,7 +211,7 @@ class Normalization(th.nn.Module):
             return input
 
 
-class MultiHeadAttentionLayer(th.nn.Sequential):
+class MultiHeadAttentionLayer(CustomSequential):
 
     def __init__(
             self,
@@ -190,22 +221,22 @@ class MultiHeadAttentionLayer(th.nn.Sequential):
             normalization='batch',
     ):
         super(MultiHeadAttentionLayer, self).__init__(
-            SkipConnection(
+            CustomSkipConnection(
                 MultiHeadAttention(
                     n_heads,
                     input_dim=embed_dim,
                     embed_dim=embed_dim
                 )
             ),
-            Normalization(embed_dim, normalization),
-            SkipConnection(
-                th.nn.Sequential(
-                    th.nn.Linear(embed_dim, feed_forward_hidden),
-                    th.nn.ReLU(),
-                    th.nn.Linear(feed_forward_hidden, embed_dim)
-                ) if feed_forward_hidden > 0 else th.nn.Linear(embed_dim, embed_dim)
+            CustomNormalization(embed_dim, normalization),
+            CustomSkipConnection(
+                CustomSequential(
+                    CustomLinear(embed_dim, feed_forward_hidden),
+                    CustomReLU(),
+                    CustomLinear(feed_forward_hidden, embed_dim)
+                ) if feed_forward_hidden > 0 else CustomLinear(embed_dim, embed_dim)
             ),
-            Normalization(embed_dim, normalization)
+            CustomNormalization(embed_dim, normalization)
         )
 
 
@@ -224,19 +255,19 @@ class GraphAttentionEncoder(th.nn.Module):
         # To map input to embedding space
         self.init_embed = th.nn.Linear(node_dim, embed_dim) if node_dim is not None else None
 
-        self.layers = th.nn.Sequential(*(
+        self.layers = CustomSequential(*(
             MultiHeadAttentionLayer(n_heads, embed_dim, feed_forward_hidden, normalization)
             for _ in range(n_layers)
         ))
 
     def forward(self, x, mask=None):
 
-        assert mask is None, "TODO mask not yet supported!"
+        # assert mask is None, "TODO mask not yet supported!"
 
         # Batch multiply to get initial embeddings of nodes
         h = self.init_embed(x.reshape(-1, x.size(-1))).view(*x.size()[:2], -1) if self.init_embed is not None else x
 
-        h = self.layers(h)
+        h = self.layers(h, mask=mask)
 
         return (
             h,  # (batch_size, graph_size, embed_dim)
@@ -300,7 +331,7 @@ class Transformer(th.nn.Module):
         visited_mask = visited_mask.unsqueeze(1) | visited_mask.unsqueeze(2)
 
         # Get graph encoding
-        embedded_cities, mean = self.graph_encoder(cities, mask=None)
+        embedded_cities, mean = self.graph_encoder(cities, mask=visited_mask)
         embedded_cities = embedded_cities.reshape(num_instances, -1)
         graph_encoding = th.cat((mean, embedded_cities), dim=1)
 
