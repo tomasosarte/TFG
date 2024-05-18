@@ -96,6 +96,8 @@ class Runner:
         Returns:
             dict: A dictionary containing the buffer, the mean episode reward, the mean episode length, and the number of environment steps.
         """
+        self.state = self.env.reset()
+        self.epi_len = self.env._max_episode_steps
         my_transition_buffer = TransitionBatch(n_steps if n_steps > 0 else self.epi_len, self.transition_format())
         time, episode_start, episode_lengths, episode_rewards = 0, 0, [], []
         max_steps = n_steps if n_steps > 0 else self.epi_len

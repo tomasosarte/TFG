@@ -106,10 +106,17 @@ class ActorCriticExperiment(Experiment):
         Returns:
             None
         """
+        
+        # Run the episode
         batch = self.runner.run_episode()
         states = batch['buffer']['states'].cpu()
         actions = batch['buffer']['actions'].cpu()
-        cities = self.env.cities.cpu()
+
+        # Get the cities
+        init_cities = 4 + self.runner.max_nodes_per_graph
+        end_cities = 4 + self.runner.max_nodes_per_graph + 2*states[0][0]
+        cities = states[0, init_cities:].reshape(-1, 2)
+
 
         # Create a plot
         fig = plt.figure()
@@ -123,7 +130,7 @@ class ActorCriticExperiment(Experiment):
         # Draw the cities
         ax.plot(cities[:, 0], cities[:, 1], 'o', color='black')
         
-        for i in range(1, states.shape[0]):
+        for i in range(1, self.runner.epi_len):
             current_city = cities[states[i][2].type(th.int32)]
             next_city = cities[actions[i].squeeze(0).type(th.int32)]
 

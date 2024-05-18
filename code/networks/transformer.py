@@ -70,9 +70,8 @@ class SkipConnection(th.nn.Module):
         super(SkipConnection, self).__init__()
         self.module = module
 
-    def forward(self, input):
-        return input + self.module(input)
-
+    def forward(self, input, *args, **kwargs):
+        return input + self.module(input, *args, **kwargs)
 
 class MultiHeadAttention(th.nn.Module):
     def __init__(
@@ -113,14 +112,6 @@ class MultiHeadAttention(th.nn.Module):
             param.data.uniform_(-stdv, stdv)
 
     def forward(self, q, h=None, mask=None):
-        """
-
-        :param q: queries (batch_size, n_query, input_dim)
-        :param h: data (batch_size, graph_size, input_dim)
-        :param mask: mask (batch_size, n_query, graph_size) or viewable as that (i.e. can be 2 dim if n_query == 1)
-        Mask should contain 1 if attention is not possible (i.e. mask is negative adjacency)
-        :return:
-        """
         if h is None:
             h = q  # compute self-attention
 
@@ -150,14 +141,14 @@ class MultiHeadAttention(th.nn.Module):
         # Optionally apply mask to prevent attention
         if mask is not None:
             mask = mask.view(1, batch_size, n_query, graph_size).expand_as(compatibility)
-            compatibility[mask] = -np.inf
+            compatibility.masked_fill_(mask, -np.inf)
 
         attn = th.softmax(compatibility, dim=-1)
 
         # If there are nodes with no neighbours then softmax returns nan so we fix them to 0
         if mask is not None:
             attnc = attn.clone()
-            attnc[mask] = 0
+            attnc.masked_fill_(mask, 0)
             attn = attnc
 
         heads = th.matmul(attn, V)
@@ -167,17 +158,7 @@ class MultiHeadAttention(th.nn.Module):
             self.W_out.view(-1, self.embed_dim)
         ).view(batch_size, n_query, self.embed_dim)
 
-        # Alternative:
-        # headst = heads.transpose(0, 1)  # swap the dimensions for batch and heads to align it for the matmul
-        # # proj_h = torch.einsum('bhni,hij->bhnj', headst, self.W_out)
-        # projected_heads = torch.matmul(headst, self.W_out)
-        # out = torch.sum(projected_heads, dim=1)  # sum across heads
-
-        # Or:
-        # out = torch.einsum('hbni,hij->bnj', heads, self.W_out)
-
         return out
-
 
 class Normalization(th.nn.Module):
 
@@ -211,7 +192,7 @@ class Normalization(th.nn.Module):
             return input
 
 
-class MultiHeadAttentionLayer(CustomSequential):
+class MultiHeadAttentionLayer(th.nn.Module):
 
     def __init__(
             self,
@@ -220,24 +201,31 @@ class MultiHeadAttentionLayer(CustomSequential):
             feed_forward_hidden=512,
             normalization='batch',
     ):
-        super(MultiHeadAttentionLayer, self).__init__(
-            CustomSkipConnection(
-                MultiHeadAttention(
-                    n_heads,
-                    input_dim=embed_dim,
-                    embed_dim=embed_dim
-                )
-            ),
-            CustomNormalization(embed_dim, normalization),
-            CustomSkipConnection(
-                CustomSequential(
-                    CustomLinear(embed_dim, feed_forward_hidden),
-                    CustomReLU(),
-                    CustomLinear(feed_forward_hidden, embed_dim)
-                ) if feed_forward_hidden > 0 else CustomLinear(embed_dim, embed_dim)
-            ),
-            CustomNormalization(embed_dim, normalization)
+        super(MultiHeadAttentionLayer, self).__init__()
+        self.attention = SkipConnection(
+            MultiHeadAttention(
+                n_heads,
+                input_dim=embed_dim,
+                embed_dim=embed_dim
+            )
         )
+        self.norm1 = Normalization(embed_dim, normalization)
+        self.ffn = SkipConnection(
+            th.nn.Sequential(
+                th.nn.Linear(embed_dim, feed_forward_hidden),
+                th.nn.ReLU(),
+                th.nn.Linear(feed_forward_hidden, embed_dim)
+            ) if feed_forward_hidden > 0 else th.nn.Linear(embed_dim, embed_dim)
+        )
+        self.norm2 = Normalization(embed_dim, normalization)
+
+    def forward(self, input, mask=None):
+        input = self.attention(input, mask=mask)
+        input = self.norm1(input)
+        input = self.ffn(input)
+        input = self.norm2(input)
+        return input
+
 
 
 class GraphAttentionEncoder(th.nn.Module):
@@ -255,24 +243,23 @@ class GraphAttentionEncoder(th.nn.Module):
         # To map input to embedding space
         self.init_embed = th.nn.Linear(node_dim, embed_dim) if node_dim is not None else None
 
-        self.layers = CustomSequential(*(
+        self.layers = th.nn.ModuleList([
             MultiHeadAttentionLayer(n_heads, embed_dim, feed_forward_hidden, normalization)
             for _ in range(n_layers)
-        ))
+        ])
 
     def forward(self, x, mask=None):
-
-        # assert mask is None, "TODO mask not yet supported!"
-
         # Batch multiply to get initial embeddings of nodes
         h = self.init_embed(x.reshape(-1, x.size(-1))).view(*x.size()[:2], -1) if self.init_embed is not None else x
 
-        h = self.layers(h, mask=mask)
+        for layer in self.layers:
+            h = layer(h, mask)
 
         return (
             h,  # (batch_size, graph_size, embed_dim)
             h.mean(dim=1),  # average to get embedding of graph, (batch_size, embed_dim)
         )
+
 
 
 class Transformer(th.nn.Module):
@@ -327,25 +314,25 @@ class Transformer(th.nn.Module):
 
         # Get visited mask
         visited_mask = states[:, 4:4+self.max_nodes_per_graph]
-        visited_mask = (visited_mask == 1)
-        visited_mask = visited_mask.unsqueeze(1) | visited_mask.unsqueeze(2)
+        bool_visited_mask = (visited_mask == 1)
+        matrix_visited_mask = bool_visited_mask.unsqueeze(1) | bool_visited_mask.unsqueeze(2)
 
         # Get graph encoding
-        embedded_cities, mean = self.graph_encoder(cities, mask=visited_mask)
+        embedded_cities, mean = self.graph_encoder(cities, mask=None)
         embedded_cities = embedded_cities.reshape(num_instances, -1)
         graph_encoding = th.cat((mean, embedded_cities), dim=1)
-
+        
         # Get first& previous cities index
         first_cities_idx = states[:, 1]
         current_cities_idx = states[:, 2]
 
-        # Get visited mask
-        visited_mask = states[:, 4:4+self.max_nodes_per_graph]
-
         # Get decoder input
         decoder_input = th.cat((first_cities_idx.unsqueeze(1), current_cities_idx.unsqueeze(1), graph_encoding, visited_mask), dim=1)
 
-        return self.decoder(decoder_input)
+        # Output
+        output = self.decoder(decoder_input)
+
+        return output
        
     
 if __name__ == "__main__":
@@ -384,8 +371,15 @@ if __name__ == "__main__":
     mask[0][2] = True
     # Transform visited cities mask to negative adjacency matrix
     mask_expanded = mask.unsqueeze(1) | mask.unsqueeze(2)
+    # print("Mask expanded: \n", mask_expanded[3].type(th.float32))
+    # print('-'*100)
 
     attention = MultiHeadAttention(n_heads=4, input_dim=2, embed_dim=4)
-    attention(q=all_cities, mask=mask_expanded)
+    at = attention(q=all_cities, mask=None)
+    # print("Attention output without mask: \n", at[3])
+    # print('-'*100)
+
+    at = attention(q=all_cities, mask=mask_expanded)
+    # print("Attention output with mask: \n", at[3])
     
 

@@ -21,6 +21,8 @@ class EnviornmentTSP(Environment):
         """
         super().__init__()
 
+        self.symbol = th.ones(1, dtype=th.float32)*(-1)
+
         self.node_dimension = 2
         self.max_nodes_per_graph = params.get('max_nodes_per_graph', 10)
         self.diff_sizes = params.get('diff_sizes', False)
@@ -53,7 +55,7 @@ class EnviornmentTSP(Environment):
         # Init_vars
         self.n_cities = self.cities.shape[0]
         visited_cities = th.zeros(self.n_cities)
-        symbol = th.ones(1, dtype=th.float32)*(-1)
+        
         flat_cities = self.cities.flatten()
         self._max_episode_steps = self.n_cities + 1
 
@@ -65,7 +67,7 @@ class EnviornmentTSP(Environment):
             flat_cities = th.cat((flat_cities, padding_cities))
 
         # State
-        first_city, current_city, previous_city = symbol, symbol, symbol
+        first_city, current_city, previous_city = self.symbol, self.symbol, self.symbol
         self.state = th.cat((th.tensor([self.n_cities]), first_city, current_city, previous_city, visited_cities, flat_cities)).unsqueeze(0)
         self.state_shape = (4 + self.max_nodes_per_graph + self.max_nodes_per_graph*self.node_dimension,)
     
@@ -137,7 +139,7 @@ class EnviornmentTSP(Environment):
         try:
             state = self._get_state() 
             if self.state[0][1] == -1:
-                assert self.state[0][4+action] == 0, "The first city has already been visited"
+                assert self.state[0][4+action] == 0, "The city has already been visited"
                 self.state[0][1] = action # first city == action
                 self.state[0][2] = action # current city == action
                 self.state[0][4+action], reward, done = 1, 0, False
