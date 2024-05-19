@@ -99,7 +99,6 @@ class ReinforceLearner:
         # Set the model to training mode and old policy to None.
         self.model.train(True)
         self.old_pi, loss_sum = None, 0.0
-        
         for _ in range(1 + self.offpolicy_iterations):
             # Compute the model-output for given batch
             out = self.model(batch['states'])   # compute both policy and values
@@ -108,10 +107,15 @@ class ReinforceLearner:
             pi = self.controller.probabilities(state=batch['states'], out=out[:, :-1]).gather(dim=-1, index=batch['actions'])
             
             # Combine policy and value loss
-            loss = self._policy_loss(pi, self._advantages(batch, val, next_val)) + self.value_loss_param * self._value_loss(batch, val, next_val)
+            policy_loss = self._policy_loss(pi, self._advantages(batch, val, next_val))
+            value_loss = self.value_loss_param * self._value_loss(batch, val, next_val)
+            loss = policy_loss + value_loss
 
             # Add entropy regularization
-            if self.entropy_regularization: loss -= self.entropy_weight * (pi * pi.log()).sum(dim=1).mean()
+            if self.entropy_regularization: 
+                entropy_loss = (pi * pi.log()).sum(dim=1).mean()
+                loss -= self.entropy_weight * entropy_loss
+                
             # Backpropagate loss
             self.optimizer.zero_grad()
             loss.backward()

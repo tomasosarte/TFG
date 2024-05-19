@@ -34,6 +34,7 @@ class Runner:
         if done:
             self.sum_rewards = 0
             self.state = self.env.reset()
+            self.epi_len = self.env._max_episode_steps
         else: self.state = next_state
     
     def transition_format(self) -> dict:

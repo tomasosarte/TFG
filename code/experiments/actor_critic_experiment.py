@@ -114,8 +114,8 @@ class ActorCriticExperiment(Experiment):
 
         # Get the cities
         init_cities = 4 + self.runner.max_nodes_per_graph
-        end_cities = 4 + self.runner.max_nodes_per_graph + 2*states[0][0]
         cities = states[0, init_cities:].reshape(-1, 2)
+        num_cities = int(states[0][0].item())
 
 
         # Create a plot
@@ -130,7 +130,7 @@ class ActorCriticExperiment(Experiment):
         # Draw the cities
         ax.plot(cities[:, 0], cities[:, 1], 'o', color='black')
         
-        for i in range(1, self.runner.epi_len):
+        for i in range(1, num_cities + 1):
             current_city = cities[states[i][2].type(th.int32)]
             next_city = cities[actions[i].squeeze(0).type(th.int32)]
 

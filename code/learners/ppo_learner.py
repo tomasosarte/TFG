@@ -13,12 +13,6 @@ class PPOLearner(OffpolicyActorCriticLearner):
         """ Computes the policy loss. """
         if self.old_pi is None:
             # The loss for on-policy data does not change
-            # policy_loss = super()._policy_loss(pi, advantages)
-            # if policy_loss < 0:
-            #     print('Policy loss is negative')
-            #     print('pi:', pi)
-            #     print('advantages:', advantages)
-            #     print('-'*100)
             return super()._policy_loss(pi, advantages)
         else:
             # The loss for off-policy data
@@ -29,11 +23,4 @@ class PPOLearner(OffpolicyActorCriticLearner):
                 ppo_loss = th.clamp(ratios, 1-self.ppo_clip_eps, 1+self.ppo_clip_eps) * advantages.detach()
                 loss = th.min(loss, ppo_loss)
 
-            # mean_neg_loss = -loss.mean()
-            # if mean_neg_loss < 0:
-            #     print('Policy loss is negative')
-            #     print('pi:', pi)
-            #     print('advantages:', advantages)
-            #     print('old_pi:', self.old_pi)
-            #     print('-'*100)
             return -loss.mean()
