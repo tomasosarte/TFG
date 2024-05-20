@@ -9,8 +9,8 @@ class EpsilonGreedyController:
     """
     def __init__(self, controller: Controller, params: dict = {}, exploration_step: int = 1) -> None:
         self.controller = controller
-        self.max_epsilon = th.tensor(params.get('epsilon_start', 1.0), dtype=th.float16)
-        self.min_epsilon = th.tensor(params.get('epsilon_finish', 0.05), dtype=th.float16)
+        self.max_epsilon = th.tensor(params.get('epsilon_start', 1.0), dtype=th.float32)
+        self.min_epsilon = th.tensor(params.get('epsilon_finish', 0.05), dtype=th.float32)
         self.anneal_time = th.tensor(params.get('epsilon_anneal_time', 10000) / exploration_step, dtype=th.float32)
         self.decay_type = params.get('epsilon_decay', 'linear')
         self.num_decisions = th.tensor(0, dtype=th.float32)

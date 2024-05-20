@@ -2,6 +2,7 @@ import torch as th
 from torch import tensor
 
 from controllers.greedy_controller import GreedyController
+from networks.transformer import Transformer
 from utils.transition_batch import TransitionBatch
 from environments.environment_tsp import EnviornmentTSP
 from networks.basic_network import BasicNetwork
@@ -499,8 +500,8 @@ def test_ACController():
     params = default_params()
     params['max_nodes_per_graph'] = 10
     params['node_dimension'] = 2
-    network = MoreBasicNetwork(params)
-    controller = ActorCriticController(network)
+    network = Transformer(params)
+    controller = ActorCriticController(model=network, params=params)
 
     # Test copy
     copy = controller.copy()
@@ -521,7 +522,6 @@ def test_ACController():
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
     visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
     state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
-
     action = controller.choose_action(state)
     assert action.shape == (1,1), "The action has the wrong shape"
     print("Choose action test passed")
@@ -540,7 +540,7 @@ def test_GreedyController():
     params = default_params()
     params['max_nodes_per_graph'] = 10
     params['node_dimension'] = 2
-    network = MoreBasicNetwork(params)
+    network = Transformer(params)
     controller = GreedyController(network)
 
     # Get a state tensor
@@ -576,13 +576,13 @@ def test_EpsilonGreedyController():
     params['epsilon_start'] = 0.5
     params['epsilon_finish'] = 0.05
     params['epsilon_anneal_time'] = 10000
-    network = MoreBasicNetwork(params)
+    network = Transformer(params)
     controller = ActorCriticController(network, params)
-    controller = EpsilonGreedyController(controller, params, exploration_step=1)
+    controller = EpsilonGreedyController(controller=controller, params=params, exploration_step=1)
 
     # Test epsilon
     epsilon = controller.epsilon()
-    assert controller.epsilon() == 0.5, "The epsilon is not correct"
+    assert epsilon == 0.5, "The epsilon is not correct"
     print("Epsilon test passed")
 
 
@@ -591,15 +591,17 @@ def test_EpsilonGreedyController():
     cities = th.tensor([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]], dtype=th.float32)
     visited_cities = th.tensor([[0, 0, 0, 0, 0]], dtype=th.bool)
     state = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
+    probs = controller.probabilities(state)
+    print("Probs: ", probs)
+    assert probs.shape == (1, 10), "The probabilities have the wrong shape"
 
     # Test probabilities with batch size 2 and one state has all cities visited
     n_cities, current_city, first_city, previous_city = th.tensor([[5], [5]]), th.tensor([[-1], [1]]), th.tensor([[-1], [2]]), th.tensor([[-1], [0]])
     visited_cities = th.tensor([[0, 0, 0, 0, 0], [1, 1, 1, 1, 1]], dtype=th.bool)
     batch = get_batch(n_cities, current_city, first_city, previous_city, visited_cities, cities, max_nodes_per_graph=10)
     probs = controller.probabilities(batch)
-    # Test probabilities
-    probs = controller.probabilities(state)
     print("Probs: ", probs)
+    assert probs.shape == (2, 10), "The probabilities have the wrong shape"
 
     # Test choose_action
     action = controller.choose_action(state)
@@ -830,12 +832,12 @@ if __name__ == '__main__':
     print("Running tests...")
 
     # test_transition_batch()
-    test_environment_tsp()
+    # test_environment_tsp()
     # test_more_basic_network()
     # test_generator()
-    # test_ACController()
-    # test_GreedyController()
-    # test_EpsilonGreedyController()
+    test_ACController()
+    test_GreedyController()
+    test_EpsilonGreedyController()
     # test_runner()
     # test_reinforce_learner()
     # test_ac_experiment()

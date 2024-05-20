@@ -23,9 +23,9 @@ class GreedyController(Controller):
     def probabilities(self, state: th.Tensor, **kwargs):
         """ Returns the probabilities with which the agent would choose actions (here one-hot because greedy). """
         self.lock.acquire()
-        try: output, value = self.model(state)
+        try: output = self.model(state)
         finally: self.lock.release()
-        return th.zeros(*output.shape).scatter_(dim=-1, index=th.max(output, dim=-1)[1].unsqueeze(dim=-1), src=th.ones(1, 1))
+        return th.zeros(*output[:, :-1].shape).scatter_(dim=-1, index=th.max(output[:, :-1], dim=-1)[1].unsqueeze(dim=-1), src=th.ones(1, 1))
 
     def choose_action(self, state: dict) -> th.Tensor:
         """
