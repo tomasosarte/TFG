@@ -22,11 +22,18 @@ class MoreBasicNetwork(nn.Module):
         
         self.input_size = 4 + self.max_nodes_per_graph + self.max_nodes_per_graph*self.node_dimension
         self.output_size = self.max_nodes_per_graph + 1
-        self.layers = nn.Sequential(
-            nn.Linear(self.input_size, 128), nn.ReLU(),
-            nn.Linear(128, 512), nn.ReLU(),
-            nn.Linear(512, 128), nn.ReLU(),
-            nn.Linear(128, self.output_size))
+        self.layers = th.nn.Sequential(
+            th.nn.Linear(self.input_size, 128),
+            th.nn.LayerNorm(128),
+            th.nn.ReLU(),
+            th.nn.Linear(128, 512),
+            th.nn.LayerNorm(512),
+            th.nn.ReLU(),
+            th.nn.Linear(512, 128),
+            th.nn.LayerNorm(128),
+            th.nn.ReLU(),
+            th.nn.Linear(128, self.output_size)
+        )
     
     def forward(self, state_batch: th.Tensor) -> th.Tensor:
         assert state_batch.shape[1] == self.input_size, "Input size does not match the expected size."

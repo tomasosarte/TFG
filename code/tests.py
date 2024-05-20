@@ -835,12 +835,20 @@ if __name__ == '__main__':
     # test_environment_tsp()
     # test_more_basic_network()
     # test_generator()
-    test_ACController()
-    test_GreedyController()
-    test_EpsilonGreedyController()
+    # test_ACController()
+    # test_GreedyController()
+    # test_EpsilonGreedyController()
     # test_runner()
     # test_reinforce_learner()
     # test_ac_experiment()
     # test_jupyter()
     # test_basic_network()
 
+    ten = th.tensor([-53.3782,  -3.9628,  21.6538,  61.6173,  43.9376, -43.5235, -22.7182,
+          15.5513, -60.4999, -42.7270])
+    # Normalize
+    ten = th.nn.functional.normalize(ten, p=2, dim=0)
+
+    softmax = th.nn.functional.softmax(ten,dim=0)
+
+    print(softmax[6])

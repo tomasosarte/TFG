@@ -27,6 +27,8 @@ class ReinforceLearner:
         self.optimizer = th.optim.Adam(self.all_parameters, lr=params.get('lr', 5E-4))
         self.compute_next_val = False  # whether the next state's value is computed
         self.old_pi = None  # this variable can be used for your PPO implementation
+        self.min_pi = params.get('min_pi', 1E-6) # minimum probability for the policy in order to avoid NaNs
+                                
 
         # Entropy regularization
         self.entropy_weight = params.get('entropy_weight', 0.01)
@@ -105,7 +107,8 @@ class ReinforceLearner:
             val = out[:, -1].unsqueeze(dim=-1)  # last entry are the values
             next_val = self.model(batch['next_states'])[:, -1].unsqueeze(dim=-1) if self.compute_next_val else None
             pi = self.controller.probabilities(state=batch['states'], out=out[:, :-1]).gather(dim=-1, index=batch['actions'])
-            
+            # pi = th.clamp(pi, min=self.min_pi)  # avoid NaNs
+
             # Combine policy and value loss
             policy_loss = self._policy_loss(pi, self._advantages(batch, val, next_val))
             value_loss = self.value_loss_param * self._value_loss(batch, val, next_val)
