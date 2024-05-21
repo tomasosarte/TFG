@@ -2,71 +2,9 @@ import math
 import torch as th
 import numpy as np
 
-class CustomSequential(th.nn.Sequential):
-    def forward(self, input, mask=None):
-        for module in self:
-            input = module(input, mask=mask)
-        return input
-    
-class CustomBatchNorm1d(th.nn.BatchNorm1d):
-    def forward(self, input, mask=None):
-        return super(CustomBatchNorm1d, self).forward(input)
-    
-class CustomInstanceNorm1d(th.nn.InstanceNorm1d):
-    def forward(self, input, mask=None):
-        return super(CustomInstanceNorm1d, self).forward(input)     
-
-class CustomLinear(th.nn.Linear):
-    def forward(self, input, mask=None):
-        return super(CustomLinear, self).forward(input)
-    
-class CustomReLU(th.nn.ReLU):
-    def forward(self, input, mask=None):
-        return super(CustomReLU, self).forward(input)
-
-class CustomSkipConnection(th.nn.Module):
-    def __init__(self, module):
-        super(CustomSkipConnection, self).__init__()
-        self.module = module
-
-    def forward(self, input, mask=None):
-        return input + self.module(input, mask=mask)
-
-class CustomNormalization(th.nn.Module):
-    def __init__(self, embed_dim, normalization='batch'):
-        super(CustomNormalization, self).__init__()
-
-        normalizer_class = {
-            'batch': CustomBatchNorm1d,
-            'instance': CustomInstanceNorm1d
-        }.get(normalization, None)
-
-        self.normalizer = normalizer_class(embed_dim, affine=True)
-
-        # Normalization by default initializes affine parameters with bias 0 and weight unif(0,1) which is too large!
-        # self.init_parameters()
-
-    def init_parameters(self):
-
-        for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
-            param.data.uniform_(-stdv, stdv)
-
-    def forward(self, input, mask=None):
-
-        if isinstance(self.normalizer, CustomBatchNorm1d):
-            return self.normalizer(input.view(-1, input.size(-1))).view(*input.size())
-        elif isinstance(self.normalizer, CustomInstanceNorm1d):
-            return self.normalizer(input.permute(0, 2, 1)).permute(0, 2, 1)
-        else:
-            assert self.normalizer is None, "Unknown normalizer type"
-            return input
-
-# --------------------------------------------------------------
-
 class SkipConnection(th.nn.Module):
 
-    def __init__(self, module):
+    def __init__(self, module: th.nn.Module):
         super(SkipConnection, self).__init__()
         self.module = module
 
@@ -111,7 +49,7 @@ class MultiHeadAttention(th.nn.Module):
             stdv = 1. / math.sqrt(param.size(-1))
             param.data.uniform_(-stdv, stdv)
 
-    def forward(self, q, h=None, mask=None):
+    def forward(self, q: th.Tensor, h: th.Tensor = None, mask: th.Tensor = None):
         if h is None:
             h = q  # compute self-attention
 
@@ -162,7 +100,7 @@ class MultiHeadAttention(th.nn.Module):
 
 class Normalization(th.nn.Module):
 
-    def __init__(self, embed_dim, normalization='batch'):
+    def __init__(self, embed_dim, normalization: str = 'batch'):
         super(Normalization, self).__init__()
 
         normalizer_class = {
@@ -181,7 +119,7 @@ class Normalization(th.nn.Module):
             stdv = 1. / math.sqrt(param.size(-1))
             param.data.uniform_(-stdv, stdv)
 
-    def forward(self, input):
+    def forward(self, input: th.Tensor) -> th.Tensor:
 
         if isinstance(self.normalizer, th.nn.BatchNorm1d):
             return self.normalizer(input.view(-1, input.size(-1))).view(*input.size())
@@ -219,7 +157,7 @@ class MultiHeadAttentionLayer(th.nn.Module):
         )
         self.norm2 = Normalization(embed_dim, normalization)
 
-    def forward(self, input, mask=None):
+    def forward(self, input, mask=None) -> th.Tensor:
         input = self.attention(input, mask=mask)
         input = self.norm1(input)
         input = self.ffn(input)
@@ -248,7 +186,7 @@ class GraphAttentionEncoder(th.nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, x, mask=None):
+    def forward(self, x: th.Tensor, mask=None) -> th.Tensor:
         # Batch multiply to get initial embeddings of nodes
         h = self.init_embed(x.reshape(-1, x.size(-1))).view(*x.size()[:2], -1) if self.init_embed is not None else x
 
@@ -297,15 +235,13 @@ class Transformer(th.nn.Module):
         self.output_size = self.max_nodes_per_graph + 1
         self.decoder = th.nn.Sequential(
             th.nn.Linear(self.input_size, 128),
-            th.nn.LayerNorm(128),
             th.nn.ReLU(),
             th.nn.Linear(128, 512),
-            th.nn.LayerNorm(512),
             th.nn.ReLU(),
             th.nn.Linear(512, 128),
-            th.nn.LayerNorm(128),
             th.nn.ReLU(),
-            th.nn.Linear(128, self.output_size)
+            th.nn.Linear(128, self.output_size),
+            th.nn.LayerNorm(self.output_size),
         )
 
 
