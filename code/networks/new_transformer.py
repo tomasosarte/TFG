@@ -186,21 +186,23 @@ class GraphAttentionEncoder(th.nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, x: th.Tensor, mask=None) -> th.Tensor:
+    def forward(self, x: th.Tensor, mask=None):
         # Batch multiply to get initial embeddings of nodes
         h = self.init_embed(x.reshape(-1, x.size(-1))).view(*x.size()[:2], -1) if self.init_embed is not None else x
 
         for layer in self.layers:
             h = layer(h, mask)
 
+        # Do not add the symbol to the output
         return (
-            h,  # (batch_size, graph_size, embed_dim)
-            h.mean(dim=1),  # average to get embedding of graph, (batch_size, embed_dim)
+            h[:, 1:, :],  # (batch_size, graph_size, embed_dim)
+            h[:, 1:, :].mean(dim=1),  # average to get embedding of graph, (batch_size, embed_dim)
+            h[:, 1:, :].std(dim=1)  # std to get embedding of graph, (batch_size, embed_dim)
         )
 
 
 
-class Transformer(th.nn.Module):
+class NewTransformer(th.nn.Module):
 
     def __init__(self, params: dict = {}) -> None:
         """
@@ -212,7 +214,7 @@ class Transformer(th.nn.Module):
         Returns:
             None
         """
-        super(Transformer, self).__init__()
+        super(NewTransformer, self).__init__()
 
         # Params
         self.max_nodes_per_graph = params.get("max_nodes_per_graph", 20)
@@ -231,7 +233,7 @@ class Transformer(th.nn.Module):
             feed_forward_hidden=params.get("feed_forward_hidden", 512)
         )
 
-        self.input_size = 2 + (self.max_nodes_per_graph + 1)*self.embed_dim + self.max_nodes_per_graph
+        self.input_size = (self.max_nodes_per_graph + 4) * self.embed_dim + self.max_nodes_per_graph
         self.output_size = self.max_nodes_per_graph + 1
         self.decoder = th.nn.Sequential(
             th.nn.Linear(self.input_size, 128),
@@ -244,8 +246,6 @@ class Transformer(th.nn.Module):
             th.nn.LayerNorm(self.output_size),
         )
 
-
-
     def forward(self, states: th.Tensor) -> th.Tensor:
 
         num_instances = states.shape[0]
@@ -254,33 +254,37 @@ class Transformer(th.nn.Module):
         init_cities = 4 + self.max_nodes_per_graph
         end_cities = init_cities + self.max_nodes_per_graph*self.node_dim
         cities = states[:, init_cities:end_cities].reshape(num_instances, self.max_nodes_per_graph, self.node_dim)
+        cities = th.cat((self.symbol.expand(num_instances, 1, self.node_dim), cities), dim=1)
 
         # Get visited mask
         visited_mask = states[:, 4:4+self.max_nodes_per_graph]
+        # visited_mask = th.cat((th.ones(num_instances, 1), visited_mask), dim=1)
         # bool_visited_mask = (visited_mask == 1)
         # matrix_visited_mask = bool_visited_mask.unsqueeze(1) | bool_visited_mask.unsqueeze(2)
 
         # Get graph encoding
-        embedded_cities, mean = self.graph_encoder(cities, mask=None)
-        embedded_cities = embedded_cities.reshape(num_instances, -1)
-        graph_encoding = th.cat((mean, embedded_cities), dim=1)
-        
-        # Get first& previous cities index
-        first_cities_idx = states[:, 1]
-        current_cities_idx = states[:, 2]
+        embedded_cities, mean, std = self.graph_encoder(cities, mask=None)
 
-        # Get decoder input
-        decoder_input = th.cat((first_cities_idx.unsqueeze(1), current_cities_idx.unsqueeze(1), graph_encoding, visited_mask), dim=1)
+        # Get first & previous cities
+        first_cities_idx = (states[:, 1] + 1).type(th.int64)
+        current_cities_idx = (states[:, 2] + 1).type(th.int64)
+        first_cities_idx_expanded = first_cities_idx.view(-1, 1, 1).expand(-1, 1, embedded_cities.size(2))
+        current_cities_idx_expanded = current_cities_idx.view(-1, 1, 1).expand(-1, 1, embedded_cities.size(2))
+        embedded_first_cities = embedded_cities.gather(1, first_cities_idx_expanded)
+        embedded_current_cities = embedded_cities.gather(1, current_cities_idx_expanded)
+
+        # State encoding
+        state_embedding = th.cat((embedded_first_cities, embedded_current_cities, mean.unsqueeze(1), std.unsqueeze(1), embedded_cities), dim=1)
+        decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
 
         # Output
         output = self.decoder(decoder_input)
-
         return output
        
     
 if __name__ == "__main__":
 
-    model = Transformer()
+    model = NewTransformer()
     padding = th.ones(10, 2)*(-1)
 
     # Get cities
