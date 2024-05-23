@@ -1,15 +1,17 @@
-import math
 import torch as th
 import numpy as np
+import math
+
 
 class SkipConnection(th.nn.Module):
 
-    def __init__(self, module: th.nn.Module):
+    def __init__(self, module):
         super(SkipConnection, self).__init__()
         self.module = module
 
-    def forward(self, input, *args, **kwargs):
-        return input + self.module(input, *args, **kwargs)
+    def forward(self, input):
+        return input + self.module(input)
+
 
 class MultiHeadAttention(th.nn.Module):
     def __init__(
@@ -49,7 +51,15 @@ class MultiHeadAttention(th.nn.Module):
             stdv = 1. / math.sqrt(param.size(-1))
             param.data.uniform_(-stdv, stdv)
 
-    def forward(self, q: th.Tensor, h: th.Tensor = None, mask: th.Tensor = None):
+    def forward(self, q, h=None, mask=None):
+        """
+
+        :param q: queries (batch_size, n_query, input_dim)
+        :param h: data (batch_size, graph_size, input_dim)
+        :param mask: mask (batch_size, n_query, graph_size) or viewable as that (i.e. can be 2 dim if n_query == 1)
+        Mask should contain 1 if attention is not possible (i.e. mask is negative adjacency)
+        :return:
+        """
         if h is None:
             h = q  # compute self-attention
 
@@ -79,14 +89,14 @@ class MultiHeadAttention(th.nn.Module):
         # Optionally apply mask to prevent attention
         if mask is not None:
             mask = mask.view(1, batch_size, n_query, graph_size).expand_as(compatibility)
-            compatibility.masked_fill_(mask, -np.inf)
+            compatibility[mask] = -np.inf
 
         attn = th.softmax(compatibility, dim=-1)
 
         # If there are nodes with no neighbours then softmax returns nan so we fix them to 0
         if mask is not None:
             attnc = attn.clone()
-            attnc.masked_fill_(mask, 0)
+            attnc[mask] = 0
             attn = attnc
 
         heads = th.matmul(attn, V)
@@ -96,11 +106,21 @@ class MultiHeadAttention(th.nn.Module):
             self.W_out.view(-1, self.embed_dim)
         ).view(batch_size, n_query, self.embed_dim)
 
+        # Alternative:
+        # headst = heads.transpose(0, 1)  # swap the dimensions for batch and heads to align it for the matmul
+        # # proj_h = th.einsum('bhni,hij->bhnj', headst, self.W_out)
+        # projected_heads = th.matmul(headst, self.W_out)
+        # out = th.sum(projected_heads, dim=1)  # sum across heads
+
+        # Or:
+        # out = th.einsum('hbni,hij->bnj', heads, self.W_out)
+
         return out
+
 
 class Normalization(th.nn.Module):
 
-    def __init__(self, embed_dim, normalization: str = 'batch'):
+    def __init__(self, embed_dim, normalization='batch'):
         super(Normalization, self).__init__()
 
         normalizer_class = {
@@ -119,7 +139,7 @@ class Normalization(th.nn.Module):
             stdv = 1. / math.sqrt(param.size(-1))
             param.data.uniform_(-stdv, stdv)
 
-    def forward(self, input: th.Tensor) -> th.Tensor:
+    def forward(self, input):
 
         if isinstance(self.normalizer, th.nn.BatchNorm1d):
             return self.normalizer(input.view(-1, input.size(-1))).view(*input.size())
@@ -130,7 +150,7 @@ class Normalization(th.nn.Module):
             return input
 
 
-class MultiHeadAttentionLayer(th.nn.Module):
+class MultiHeadAttentionLayer(th.nn.Sequential):
 
     def __init__(
             self,
@@ -139,31 +159,24 @@ class MultiHeadAttentionLayer(th.nn.Module):
             feed_forward_hidden=512,
             normalization='batch',
     ):
-        super(MultiHeadAttentionLayer, self).__init__()
-        self.attention = SkipConnection(
-            MultiHeadAttention(
-                n_heads,
-                input_dim=embed_dim,
-                embed_dim=embed_dim
-            )
+        super(MultiHeadAttentionLayer, self).__init__(
+            SkipConnection(
+                MultiHeadAttention(
+                    n_heads,
+                    input_dim=embed_dim,
+                    embed_dim=embed_dim
+                )
+            ),
+            Normalization(embed_dim, normalization),
+            SkipConnection(
+                th.nn.Sequential(
+                    th.nn.Linear(embed_dim, feed_forward_hidden),
+                    th.nn.ReLU(),
+                    th.nn.Linear(feed_forward_hidden, embed_dim)
+                ) if feed_forward_hidden > 0 else th.nn.Linear(embed_dim, embed_dim)
+            ),
+            Normalization(embed_dim, normalization)
         )
-        self.norm1 = Normalization(embed_dim, normalization)
-        self.ffn = SkipConnection(
-            th.nn.Sequential(
-                th.nn.Linear(embed_dim, feed_forward_hidden),
-                th.nn.ReLU(),
-                th.nn.Linear(feed_forward_hidden, embed_dim)
-            ) if feed_forward_hidden > 0 else th.nn.Linear(embed_dim, embed_dim)
-        )
-        self.norm2 = Normalization(embed_dim, normalization)
-
-    def forward(self, input, mask=None) -> th.Tensor:
-        input = self.attention(input, mask=mask)
-        input = self.norm1(input)
-        input = self.ffn(input)
-        input = self.norm2(input)
-        return input
-
 
 
 class GraphAttentionEncoder(th.nn.Module):
@@ -181,26 +194,26 @@ class GraphAttentionEncoder(th.nn.Module):
         # To map input to embedding space
         self.init_embed = th.nn.Linear(node_dim, embed_dim) if node_dim is not None else None
 
-        self.layers = th.nn.ModuleList([
+        self.layers = th.nn.Sequential(*(
             MultiHeadAttentionLayer(n_heads, embed_dim, feed_forward_hidden, normalization)
             for _ in range(n_layers)
-        ])
+        ))
 
-    def forward(self, x: th.Tensor, mask=None):
+    def forward(self, x, mask=None):
+
+        assert mask is None, "TODO mask not yet supported!"
+
         # Batch multiply to get initial embeddings of nodes
-        h = self.init_embed(x.reshape(-1, x.size(-1))).view(*x.size()[:2], -1) if self.init_embed is not None else x
+        h = self.init_embed(x.view(-1, x.size(-1))).view(*x.size()[:2], -1) if self.init_embed is not None else x
 
-        for layer in self.layers:
-            h = layer(h, mask)
+        h = self.layers(h)
 
-        # Do not add the symbol to the output
         return (
-            h[:, 1:, :],  # (batch_size, graph_size, embed_dim)
-            h[:, 1:, :].mean(dim=1),  # average to get embedding of graph, (batch_size, embed_dim)
-            h[:, 1:, :].std(dim=1)  # std to get embedding of graph, (batch_size, embed_dim)
+            h,  # (batch_size, graph_size, embed_dim)
+            h.mean(dim=1),  # average to get embedding of graph, (batch_size, embed_dim)
+            h.std(dim=1)  # std to get embedding of graph, (batch_size, embed_dim)
         )
-
-
+ 
 
 class NewTransformer(th.nn.Module):
 
@@ -233,7 +246,7 @@ class NewTransformer(th.nn.Module):
             feed_forward_hidden=params.get("feed_forward_hidden", 512)
         )
 
-        self.input_size = (self.max_nodes_per_graph + 4) * self.embed_dim + self.max_nodes_per_graph
+        self.input_size = (self.max_nodes_per_graph + 5) * self.embed_dim + self.max_nodes_per_graph
         self.output_size = self.max_nodes_per_graph + 1
         self.decoder = th.nn.Sequential(
             th.nn.Linear(self.input_size, 128),
@@ -245,7 +258,6 @@ class NewTransformer(th.nn.Module):
             th.nn.Linear(128, self.output_size),
             th.nn.LayerNorm(self.output_size),
         )
-
     def forward(self, states: th.Tensor) -> th.Tensor:
 
         num_instances = states.shape[0]
@@ -258,9 +270,6 @@ class NewTransformer(th.nn.Module):
 
         # Get visited mask
         visited_mask = states[:, 4:4+self.max_nodes_per_graph]
-        # visited_mask = th.cat((th.ones(num_instances, 1), visited_mask), dim=1)
-        # bool_visited_mask = (visited_mask == 1)
-        # matrix_visited_mask = bool_visited_mask.unsqueeze(1) | bool_visited_mask.unsqueeze(2)
 
         # Get graph encoding
         embedded_cities, mean, std = self.graph_encoder(cities, mask=None)
@@ -276,10 +285,8 @@ class NewTransformer(th.nn.Module):
         # State encoding
         state_embedding = th.cat((embedded_first_cities, embedded_current_cities, mean.unsqueeze(1), std.unsqueeze(1), embedded_cities), dim=1)
         decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
-
-        # Output
-        output = self.decoder(decoder_input)
-        return output
+        
+        return self.decoder(decoder_input)
        
     
 if __name__ == "__main__":
@@ -321,10 +328,12 @@ if __name__ == "__main__":
     # print("Mask expanded: \n", mask_expanded[3].type(th.float32))
     # print('-'*100)
 
+    # print("All cities: \n", all_cities.shape)
     attention = MultiHeadAttention(n_heads=4, input_dim=2, embed_dim=4)
     at = attention(q=all_cities, mask=None)
-    # print("Attention output without mask: \n", at[3])
+    # print("Attention output without mask: \n", at.shape)
     # print('-'*100)
+
 
     at = attention(q=all_cities, mask=mask_expanded)
     # print("Attention output with mask: \n", at[3])
