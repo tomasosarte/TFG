@@ -1,6 +1,7 @@
 import os
 import torch as th
 from environments.environment import Environment
+from generators.tsp_generator import TSPGenerator
 
 class EnviornmentTSP(Environment):
     """
@@ -28,6 +29,10 @@ class EnviornmentTSP(Environment):
         self.diff_sizes = params.get('diff_sizes', False)
         self.num_train_instance_per_size = params.get('num_train_instance_per_size', 10)
         self.training_sizes = params.get('training_sizes', [self.max_nodes_per_graph])
+        self.use_training_set = params.get('use_training_set', True)
+        if not self.use_training_set:
+            self.train_generator = TSPGenerator()
+
         if cities == None:
             self.diff_cities = True
             self.cities = self._get_new_cities()
@@ -38,11 +43,14 @@ class EnviornmentTSP(Environment):
         self._form_state()
         self.distance_matrix = self._get_distance_matrix()
         
-    def _get_new_cities(self) -> th.Tensor:
-        instance = th.randint(0, self.num_train_instance_per_size, (1,)).item()
+    def _get_new_cities(self) -> th.Tensor:     
         size = self.max_nodes_per_graph
-        if self.diff_sizes: size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]            
-        return th.load(f"training/tsp/size_{size}/instance_{instance}.pt")
+        if self.diff_sizes: size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]    
+        if self.use_training_set:
+            instance = th.randint(0, self.num_train_instance_per_size, (1,)).item()
+            return th.load(f"training/tsp/size_{size}/instance_{instance}.pt")    
+        else: return self.train_generator.generate_instance(size)    
+        
     
     def _get_distance_matrix(self) -> th.Tensor:
         distance_matrix = th.zeros((self.n_cities, self.n_cities))
