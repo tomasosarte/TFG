@@ -213,7 +213,69 @@ class GraphAttentionEncoder(th.nn.Module):
             h.mean(dim=1),  # average to get embedding of graph, (batch_size, embed_dim)
             h.std(dim=1)  # std to get embedding of graph, (batch_size, embed_dim)
         )
- 
+
+class AttentionDecoder(th.nn.Module):
+
+    def __init__(self, 
+                 input_size: int, 
+                 output_size: int,
+                 n_heads: int = 4,
+                 embed_dim: int = 4,
+                 feed_forward_hidden: int = 512,
+                 ) -> None:
+        """
+        Constructor for the AttentionDecoder class. This class is used to represent the network that will be used to solve NP-HARD problems.
+
+        Args:
+            input_size (int): The size of the input tensor.
+            output_size (int): The size of the output tensor.
+        
+        Returns:
+            None
+        """
+        super(AttentionDecoder, self).__init__()
+
+        self.input_size = input_size
+        self.output_size = output_size
+
+        self.attention = MultiHeadAttentionLayer(
+            n_heads=n_heads,
+            embed_dim=embed_dim,
+            feed_forward_hidden=feed_forward_hidden,
+            normalization='batch'
+        )
+
+        self.decoder = th.nn.Sequential(
+            th.nn.Linear(self.input_size, 128),
+            th.nn.ReLU(),
+            th.nn.Linear(128, 512),
+            th.nn.ReLU(),
+            th.nn.Linear(512, 128),
+            th.nn.ReLU(),
+            th.nn.Linear(128, self.output_size),
+            th.nn.LayerNorm(self.output_size),
+        )
+
+    def forward(self, x: th.Tensor, visited_mask: th.Tensor) -> th.Tensor:
+        """
+        Forward pass of the network.
+
+        Args:
+            x (th.Tensor): The input tensor.
+            visited_mask (th.Tensor): The visited mask tensor.
+        
+        Returns:
+            th.Tensor: The output tensor.
+        """
+
+        # Attention layer
+        attention_output = self.attention(x)
+
+        # Decoder
+        decoder_input = th.cat((attention_output.view(x.shape[0], -1), visited_mask), dim=1)
+
+        return self.decoder(decoder_input)
+        
 
 class NewTransformer(th.nn.Module):
 
@@ -258,6 +320,7 @@ class NewTransformer(th.nn.Module):
             th.nn.Linear(128, self.output_size),
             th.nn.LayerNorm(self.output_size),
         )
+
     def forward(self, states: th.Tensor) -> th.Tensor:
 
         num_instances = states.shape[0]
@@ -284,9 +347,9 @@ class NewTransformer(th.nn.Module):
 
         # State encoding
         state_embedding = th.cat((embedded_first_cities, embedded_current_cities, mean.unsqueeze(1), std.unsqueeze(1), embedded_cities), dim=1)
-        decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
+        # decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
         
-        return self.decoder(decoder_input)
+        return self.decoder(state_embedding, visited_mask)
        
     
 if __name__ == "__main__":
