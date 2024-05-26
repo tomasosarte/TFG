@@ -35,7 +35,6 @@ class TSPGenerator:
         Returns:
             Tensor: The list of instances.
         """
-
         return [self.generate_instance(n_cities) for _ in range(n_instances)]
     
     def generate_batch_set(self, n_instances: int, list_n_cities: list[int]) -> list[list[th.Tensor]]:
@@ -51,7 +50,6 @@ class TSPGenerator:
         Returns:
             Tensor: The list of batches.
         """
-
         return [self.generate_batch(n_instances, n_cities) for n_cities in list_n_cities]
 
     def plot_instance(self, cities: th.Tensor):

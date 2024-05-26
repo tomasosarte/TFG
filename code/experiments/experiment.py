@@ -37,9 +37,17 @@ class Experiment:
         self.final_plot = params.get('final_plot', False)
         self.wandb = params.get('wandb', False)
 
-    def plot_training(self, update=False):
-        """ Plots logged training results. Use "update=True" if the plot is continuously updated
-            or use "update=False" if this is the final call (otherwise there will be double plotting). """ 
+    def plot_training(self, update=False) -> None:
+        """ 
+        Plots logged training results. Use "update=True" if the plot is continuously updated
+        or use "update=False" if this is the final call (otherwise there will be double plotting). 
+        
+        Args:
+            update bool: Whether to update the plot or not.
+        
+        Returns:
+            None
+        """ 
         # Smooth curves
         window = max(int(len(self.episode_returns) / 50), 10)
         if len(self.episode_losses) < window + 2: return
@@ -82,9 +90,17 @@ class Experiment:
         # Save the plot
 
 
-    def close(self):
-        """ Frees all allocated runtime ressources, but allows to continue the experiment later. 
-            Calling the run() method after close must be able to pick up the experiment where it was. """
+    def close(self) -> None:
+        """ 
+        Frees all allocated runtime ressources, but allows to continue the experiment later. 
+        Calling the run() method after close must be able to pick up the experiment where it was. 
+        
+        Args:
+            None
+        
+        Returns:
+            None
+        """
         pass
 
     def plot_rollout(self) -> None:
@@ -97,10 +113,9 @@ class Experiment:
         Returns:
             None
         """ 
-
         pass
     
-    def run(self):
+    def run(self) -> None:
         """ 
         Starts (or continues) the experiment. 
         
