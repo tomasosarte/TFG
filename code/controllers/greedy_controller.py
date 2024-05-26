@@ -8,7 +8,7 @@ class GreedyController(Controller):
     Translates model outputs into greedy actions overwritting the controller object.
     """
 
-    def copy(self):
+    def copy(self) -> 'GreedyController':
         """
         Shallow copy of this controller that does not copy the model
 
@@ -20,8 +20,17 @@ class GreedyController(Controller):
         """
         return GreedyController(model=self.model)
     
-    def probabilities(self, state: th.Tensor, **kwargs):
-        """ Returns the probabilities with which the agent would choose actions (here one-hot because greedy). """
+    def probabilities(self, state: th.Tensor, **kwargs) -> th.Tensor:
+        """ 
+        Returns the probabilities with which the agent would choose actions (here one-hot because greedy).
+
+        Args:
+            state (th.Tensor): The state of the agent.
+            **kwargs: Additional arguments.
+
+        Returns:
+            th.Tensor: The probabilities of each action. 
+        """
         self.lock.acquire()
         try: output = self.model(state)
         finally: self.lock.release()

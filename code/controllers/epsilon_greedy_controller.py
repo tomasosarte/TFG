@@ -8,6 +8,17 @@ class EpsilonGreedyController:
     Keeps track of training steps to decay exploration automatically.
     """
     def __init__(self, controller: Controller, params: dict = {}, exploration_step: int = 1) -> None:
+        """
+        Initializes the controller.
+
+        Args:
+            controller (Controller): The controller to be used.
+            params (dict): Dictionary with parameters.
+            exploration_step (int): Number of steps to decay epsilon per round.
+        
+        Returns:
+            None
+        """
         self.controller = controller
         self.max_epsilon = th.tensor(params.get('epsilon_start', 1.0), dtype=th.float32)
         self.min_epsilon = th.tensor(params.get('epsilon_finish', 0.05), dtype=th.float32)
@@ -35,11 +46,16 @@ class EpsilonGreedyController:
             decay_factor = -math.log(self.min_epsilon / self.max_epsilon) / (self.anneal_time - 1)
             return self.max_epsilon * math.exp(-decay_factor * self.num_decisions)
         
-
     def probabilities(self, state: th.Tensor, out: th.Tensor = None) -> th.Tensor:
-
         """ 
         Returns the probabilities with which the agent would choose actions. 
+
+        Args:
+            state (th.Tensor): The state of the agent.
+            out (th.Tensor): The output of the model.
+
+        Returns:
+            th.Tensor: The probabilities of each action.
         """
         eps = self.epsilon()
 
@@ -62,9 +78,19 @@ class EpsilonGreedyController:
 
         return probs
         
-    def choose_action(self, state, increase_counter=True, **kwargs):
-        """ Returns the (possibly random) actions the agent takes when faced with "observation".
-            Decays epsilon only when increase_counter=True". """
+    def choose_action(self, state, increase_counter=True, **kwargs) -> th.Tensor:
+        """ 
+        Returns the (possibly random) actions the agent takes when faced with "observation".
+        Decays epsilon only when increase_counter=True". 
+            
+        Args:
+            state (dict): The state of the environment.
+            increase_counter (bool): Whether to increase the number of decisions.
+            **kwargs: Additional arguments for the controller.
+        
+        Returns:
+            th.Tensor: The action to take.
+        """
         if increase_counter: self.num_decisions += 1
         return th.distributions.Categorical(probs=self.probabilities(state)).sample().unsqueeze(0)
     

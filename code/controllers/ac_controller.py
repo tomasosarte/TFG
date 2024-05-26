@@ -23,7 +23,7 @@ class ActorCriticController(Controller):
         self.lock = Lock()
         self.max_cities = params.get('max_nodes_per_graph', 20)
 
-    def copy(self):
+    def copy(self) -> 'ActorCriticController':
         """
         Shallow copy of this controller that does not copy the model.
 

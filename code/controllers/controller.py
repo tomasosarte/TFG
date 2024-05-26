@@ -33,7 +33,7 @@ class Controller:
         """
         pass
     
-    def parameters(self):
+    def parameters(self) -> th.nn.Parameter:
         """
         Returns a generator of the underlying model parameters
 
