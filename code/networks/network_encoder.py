@@ -41,7 +41,6 @@ class MultiHeadAttentionLayer(nn.Module):
 
         )
 
-
 class GraphAttentionEncoder(nn.Module):
 
     def __init__(self, 

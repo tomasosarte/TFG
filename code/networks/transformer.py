@@ -129,7 +129,6 @@ class Normalization(th.nn.Module):
             assert self.normalizer is None, "Unknown normalizer type"
             return input
 
-
 class MultiHeadAttentionLayer(th.nn.Module):
 
     def __init__(
@@ -164,8 +163,6 @@ class MultiHeadAttentionLayer(th.nn.Module):
         input = self.norm2(input)
         return input
 
-
-
 class GraphAttentionEncoder(th.nn.Module):
     def __init__(
             self,
@@ -197,8 +194,6 @@ class GraphAttentionEncoder(th.nn.Module):
             h,  # (batch_size, graph_size, embed_dim)
             h.mean(dim=1),  # average to get embedding of graph, (batch_size, embed_dim)
         )
-
-
 
 class Transformer(th.nn.Module):
 
@@ -276,8 +271,7 @@ class Transformer(th.nn.Module):
         output = self.decoder(decoder_input)
 
         return output
-       
-    
+          
 if __name__ == "__main__":
 
     model = Transformer()

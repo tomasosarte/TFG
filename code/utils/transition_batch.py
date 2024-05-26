@@ -6,7 +6,18 @@ class TransitionBatch:
     """ Simple implementation of a batchof transitionsm (or another dictionary-based tensor structure).
         Read and write operations are thread-safe, but the iterator is not (you cannot interate
         over the same TransitionBatch in two threads at the same time). """
-    def __init__(self, max_size, transition_format, batch_size=32):
+    def __init__(self, max_size: int, transition_format: dict, batch_size: int=32) -> None:
+        """
+        Initializes the TransitionBatch object.
+
+        Args:
+            max_size (int): The maximum size of the batch.
+            transition_format (dict): A dictionary containing the format of the transitions.
+            batch_size (int): The batch size.
+        
+        Returns:
+            None
+        """
         self.lock = threading.Lock()
         self.indices = []
         self.size = 0
@@ -17,14 +28,31 @@ class TransitionBatch:
         for key, spec in transition_format.items():
             self.dict[key] = th.zeros([max_size, *spec[0]], dtype=spec[1])
             
-    def _clone_empty_batch(self, max_size=None, batch_size=None):
-        """ Clones this TransitionBatch without cloning the data. """
+    def _clone_empty_batch(self, max_size: int=None, batch_size: int=None) -> 'TransitionBatch':
+        """ 
+        Clones this TransitionBatch without cloning the data. 
+        
+        Args:
+            max_size (int): The maximum size of the batch.
+            batch_size (int): The batch size.
+            
+        Returns:
+            TransitionBatch: The cloned TransitionBatch.
+        """
         max_size = self.max_size if max_size is None else max_size
         batch_size = self.batch_size if batch_size is None else batch_size
         return TransitionBatch(max_size=max_size, transition_format={}, batch_size=batch_size)
     
-    def to(self, device):
-        """ Move all tensors in the dictionary to the specified device. """
+    def to(self, device: th.device) -> 'TransitionBatch':
+        """ 
+        Move all tensors in the dictionary to the specified device. 
+        
+        Args:
+            device: The device to move the tensors to.
+        
+        Returns:
+            TransitionBatch: The TransitionBatch with the tensors moved to the specified device.
+        """
         self.lock.acquire()
         try:
             for key in self.dict.keys():
@@ -33,11 +61,19 @@ class TransitionBatch:
             self.lock.release()
         return self
     
-    def __getitem__(self, key):
-        """ Access the TransitionBatch with the [] operator. Use as key either 
-            - the string name of a variable to get the full tensor of that variable,
-            - a slice to get a time-slice over all variables in the batch,
-            - a LongTensor that selects a subset of indices for all variables in the batch. """
+    def __getitem__(self, key) -> 'TransitionBatch':
+        """ 
+        Access the TransitionBatch with the [] operator. Use as key either 
+        - the string name of a variable to get the full tensor of that variable,
+        - a slice to get a time-slice over all variables in the batch,
+        - a LongTensor that selects a subset of indices for all variables in the batch. 
+        
+        Args:
+            key: The key to access the TransitionBatch.
+            
+        Returns:
+            The entry of the transition called "key", a slice"
+        """
         # Return the entry of the transition called "key"
         if isinstance(key, str): 
             return self.dict[key]
@@ -66,8 +102,16 @@ class TransitionBatch:
             return batch
         return None
     
-    def get_first(self):
-        """ Returns a batch of the oldest entries of all variables. """
+    def get_first(self) -> 'TransitionBatch':
+        """ 
+        Returns a batch of the oldest entries of all variables. 
+        
+        Args:
+            None
+
+        Returns:
+            TransitionBatch: A batch of the oldest entries of all variables.
+        """
         batch = self._clone_empty_batch(max_size=1)
         self.lock.acquire()
         try:
@@ -77,8 +121,16 @@ class TransitionBatch:
         finally: self.lock.release()
         return batch    
     
-    def get_last(self):
-        """ Returns a batch of the newest entries of all variables. """
+    def get_last(self) -> 'TransitionBatch':
+        """ 
+        Returns a batch of the newest entries of all variables. 
+        
+        Args:
+            None
+        
+        Returns:
+            TransitionBatch: A batch of the newest entries of all variables.
+        """
         batch = self._clone_empty_batch(max_size=1)
         self.lock.acquire()
         try:
@@ -88,8 +140,16 @@ class TransitionBatch:
         finally: self.lock.release()
         return batch
     
-    def add(self, trans:dict):
-        """ Adding transition dictionaries, which can contain Tensors of arbitrary length. """
+    def add(self, trans: dict) -> 'TransitionBatch':
+        """ 
+        Adding transition dictionaries, which can contain Tensors of arbitrary length. 
+        
+        Args:
+            trans (dict): The transition dictionary to add.
+        
+        Returns:
+            TransitionBatch: The TransitionBatch with the added transition dictionary.
+        """
         if isinstance(trans, TransitionBatch):
             trans = trans.dict
         # Add all data in the dict
@@ -113,8 +173,16 @@ class TransitionBatch:
         finally: self.lock.release()
         return self
             
-    def trim(self):
-        """ Reduces the length of the max_size to its actual size (in-place). Returns self. """
+    def trim(self) -> 'TransitionBatch':
+        """ 
+        Reduces the length of the max_size to its actual size (in-place). Returns self. 
+        
+        Args:
+            None
+        
+        Returns:
+            TransitionBatch: The TransitionBatch with the reduced length of the max_size.
+        """
         self.lock.acquire()
         try:
             for k, v in self.dict.items():
@@ -123,8 +191,17 @@ class TransitionBatch:
         finally: self.lock.release()
         return self
     
-    def replace(self, batch, index=0):
-        """ Replaces parts of this batch with another batch (which must be smaller). """
+    def replace(self, batch: 'TransitionBatch', index: int) -> None:
+        """ 
+        Replaces parts of this batch with another batch (which must be smaller). 
+        
+        Args:
+            batch: The batch to replace.
+            index (int): The index to replace.
+        
+        Returns:
+            None
+        """
         self.lock.acquire()
         try:
             #assert batch.max_size <= self.max_size - index, "Replacement is larger then target area in batch."
@@ -135,22 +212,54 @@ class TransitionBatch:
                 self.dict[k][index:(index + batch.max_size)] = v    
         finally: self.lock.release()
     
-    def sample(self):
-        """ Samples a random mini-batch from the batch. """
+    def sample(self) -> 'TransitionBatch':
+        """ 
+        Samples a random mini-batch from the batch. 
+        
+        Args:
+            None
+        
+        Returns:
+            TransitionBatch: A random mini-batch from the batch.
+        """
         return self[th.randint(high=self.size, size=(self.batch_size,1))]
             
-    def __len__(self): 
-        """ Returns the length of the batch. """
+    def __len__(self) -> int:
+        """ 
+        Returns the length of the batch. 
+        
+        Args:
+            None
+        
+        Returns:
+            int: The length of the batch.
+        """
         return self.size
     
-    def __iter__(self):  
-        """ Initializes an iterator over the batch. """
+    def __iter__(self) -> 'TransitionBatch':
+        """ 
+        Initializes an iterator over the batch. 
+        
+        Args:
+            None
+        
+        Returns:
+            TransitionBatch: The iterator over the batch.
+        """
         self.indices = list(range(self.size))
         np.random.shuffle(self.indices)
         return self
     
-    def __next__(self):  
-        """ Iterates through batch, returns list of contiguous tensors. """
+    def __next__(self):
+        """ 
+        Iterates through batch, returns list of contiguous tensors. 
+        
+        Args:
+            None
+            
+        Returns:
+            list: A list of contiguous tensors.
+        """
         if len(self.indices) == 0: raise StopIteration
         size = min(self.batch_size, len(self.indices))
         batch = self[th.LongTensor(self.indices[-size:])]

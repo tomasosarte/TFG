@@ -9,6 +9,17 @@ class Runner:
     """Implements a single thread runner class."""
 
     def __init__(self, controller: Controller, env: Environment, params: dict = {}) -> None:
+        """
+        Initializes the runner object.
+
+        Args:
+            controller (Controller): The controller used in the training process.
+            env (Environment): The environment used in the training process.
+            params (dict): A dictionary containing the parameters for the learner.
+        
+        Returns:
+            None
+        """
         self.env = env
         self.controller = controller
         self.epi_len = params.get('max_episode_length', self.env._max_episode_steps)
@@ -29,6 +40,10 @@ class Runner:
     def _next_step(self, done : bool = True, next_state = None) -> None:
         """
         Switch to the next time-step and update internal bookeeping.
+
+        Args:
+            done (bool): A boolean indicating if the episode is done.
+            next_state: The next state in the environment.
         """
         self.time = 0 if done else self.time + 1
         if done:

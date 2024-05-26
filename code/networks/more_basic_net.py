@@ -24,13 +24,10 @@ class MoreBasicNetwork(nn.Module):
         self.output_size = self.max_nodes_per_graph + 1
         self.layers = th.nn.Sequential(
             th.nn.Linear(self.input_size, 128),
-            th.nn.LayerNorm(128),
             th.nn.ReLU(),
             th.nn.Linear(128, 512),
-            th.nn.LayerNorm(512),
             th.nn.ReLU(),
             th.nn.Linear(512, 128),
-            th.nn.LayerNorm(128),
             th.nn.ReLU(),
             th.nn.Linear(128, self.output_size)
         )

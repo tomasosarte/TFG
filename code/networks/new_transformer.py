@@ -1,7 +1,6 @@
+import math
 import torch as th
 import numpy as np
-import math
-
 
 class SkipConnection(th.nn.Module):
 
@@ -11,7 +10,6 @@ class SkipConnection(th.nn.Module):
 
     def forward(self, input):
         return input + self.module(input)
-
 
 class MultiHeadAttention(th.nn.Module):
     def __init__(
@@ -117,7 +115,6 @@ class MultiHeadAttention(th.nn.Module):
 
         return out
 
-
 class Normalization(th.nn.Module):
 
     def __init__(self, embed_dim, normalization='batch'):
@@ -149,7 +146,6 @@ class Normalization(th.nn.Module):
             assert self.normalizer is None, "Unknown normalizer type"
             return input
 
-
 class MultiHeadAttentionLayer(th.nn.Sequential):
 
     def __init__(
@@ -177,7 +173,6 @@ class MultiHeadAttentionLayer(th.nn.Sequential):
             ),
             Normalization(embed_dim, normalization)
         )
-
 
 class GraphAttentionEncoder(th.nn.Module):
     def __init__(
@@ -276,7 +271,6 @@ class AttentionDecoder(th.nn.Module):
 
         return self.decoder(decoder_input)
         
-
 class NewTransformer(th.nn.Module):
 
     def __init__(self, params: dict = {}) -> None:
@@ -351,7 +345,7 @@ class NewTransformer(th.nn.Module):
         
         return self.decoder(decoder_input)
        
-    
+   
 if __name__ == "__main__":
 
     model = NewTransformer()
