@@ -1,15 +1,15 @@
 import wandb
-import pylab as pl
 import torch as th
 import numpy as np
+import pylab as pl
 from tqdm import tqdm
-from IPython import display
 import matplotlib.pyplot as plt
 from torch.nn.modules import Module
 from IPython.display import display, clear_output
-
+from IPython import display
 
 from runners.runner import Runner
+from solvers.gurobi_tsp import solve_tsp
 from runners.multi_runner import MultiRunner
 from experiments.experiment import Experiment
 from environments.environment import Environment
@@ -97,7 +97,53 @@ class ActorCriticExperiment(Experiment):
             self.plot_training(update=False)
         
         return self.episode_returns, self.episode_lengths, self.episode_losses, self.env_steps
-    
+
+    def plot_tour(self, cities: th.Tensor, tour: th.Tensor, num_cities: int) -> None:
+        """
+        Plot the tour of the agent.
+
+        Args:
+            cities: Tensor containing the coordinates of the cities.
+            tour: Tensor containing the tour of the agent.
+            num_cities: Number of cities in the problem.
+        
+        Returns:
+            None
+        """
+
+        # Create a plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_title('Rollout')
+        ax.set_xlabel('Coord X')
+        ax.set_ylabel('Coord Y')
+
+        # Draw the cities
+        ax.plot(cities[:, 0], cities[:, 1], 'o', color='black')
+        
+        for i in range(1, num_cities + 1):
+            current_city = cities[tour[i-1].squeeze(0).type(th.int32)]
+            next_city = cities[tour[i].squeeze(0).type(th.int32)]
+
+            # Calculate the direction and length
+            dx = next_city[0] - current_city[0]
+            dy = next_city[1] - current_city[1]
+            length = (dx**2 + dy**2)**0.5
+
+            # Adjust the arrow to end at the next city
+            arrow_length = length - 0.03  # slightly less than full length to stop at the point
+
+            # Draw the arrow
+            ax.arrow(current_city[0], current_city[1], 
+                    arrow_length * (dx / length), arrow_length * (dy / length), 
+                    head_width=0.03, head_length=0.02, fc='blue', ec='blue')
+
+            # Sleep for a short while to slow down the animation
+            display.clear_output(wait=True)
+        display.display(plt.gcf())
+
     def plot_rollout(self) -> None:
         """
         Overriding the plot_rollout method to plot the rollout of the agent.
@@ -119,30 +165,68 @@ class ActorCriticExperiment(Experiment):
         cities = states[0, init_cities:].reshape(-1, 2)
         num_cities = int(states[0][0].item())
 
+        # Plot the tour
+        self.plot_tour(cities, actions, num_cities)
 
-        # Create a plot
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_label('Rollout')
-        ax.set_xlabel('Coord X')
-        ax.set_ylabel('Coord Y')
+    def calculate_tour_distance(self, cities: th.Tensor, tour: th.Tensor, num_cities: int) -> float:
+        """
+        Calculate the distance of the tour.
 
-        # Draw the cities
-        ax.plot(cities[:, 0], cities[:, 1], 'o', color='black')
+        Args:
+            cities: Tensor containing the coordinates of the cities.
+            tour: Tensor containing the tour of the agent.
+            num_cities: Number of cities in the problem.
         
+        Returns:
+            float: The distance of the tour.
+        """
+        distance = 0.0
         for i in range(1, num_cities + 1):
-            current_city = cities[states[i][2].type(th.int32)]
-            next_city = cities[actions[i].squeeze(0).type(th.int32)]
+            current_city = cities[tour[i-1].squeeze(0).type(th.int32)]
+            next_city = cities[tour[i].squeeze(0).type(th.int32)]
+            dx = next_city[0] - current_city[0]
+            dy = next_city[1] - current_city[1]
+            distance += (dx**2 + dy**2)**0.5
+        return distance.item()
+    
+    def compare_vs_baseline(self, num_episodes: int = 10) -> float:
+        """
+        Compare the model's performance against the optimal solution.
 
-            # Draw the arrow
-            ax.arrow(current_city[0], current_city[1], next_city[0] - current_city[0], next_city[1] - current_city[1], 
-                     head_width=0.03, head_length=0.02, fc='blue', ec='blue')
+        Args:
+            num_episodes: Number of episodes to run.
+        
+        Returns:
+            float: The average gap between the model's solution and the optimal solution.
+        """
 
-            # Sleep for a short while to slow down the animation
-            display.clear_output(wait=True)
-            display.display(pl.gcf())
+        total_gap = 0.0
+        for _ in range(num_episodes):
+            # Run the episode
+            batch = self.runner.run_episode()
+            states = batch['buffer']['states'].cpu()
+            actions = batch['buffer']['actions'].cpu()
 
+            # Get the cities
+            num_cities = int(states[0][0].item())
+            init_cities = 4 + self.runner.max_nodes_per_graph
+            cities = states[0, init_cities:].reshape(-1, 2)
+            cities = cities[:num_cities]
+
+            # Calculate the optimal solution
+            optim_tour, optim_distance = solve_tsp(cities)
+
+            # Calculate the model's solution
+            model_tour = actions[:num_cities + 1].squeeze(1).cpu()
+            model_distance = self.calculate_tour_distance(cities, model_tour, num_cities)
+
+            # Calculate the gap
+            gap = round((model_distance - optim_distance) / optim_distance * 100, 2)
+            total_gap += gap
+
+        avg_gap = total_gap / num_episodes
+        return avg_gap
             
+
+
             

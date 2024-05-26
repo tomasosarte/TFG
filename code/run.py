@@ -15,7 +15,7 @@ from learners.ppo_learner import PPOLearner
 # ------------------------------------------------------------------
 
 from generators.tsp_generator import TSPGenerator
-from exact_solvers.solver_tsp import solve_tsp
+from solvers.gurobi_tsp import solve_tsp
 
 # Get params
 params = default_params()
