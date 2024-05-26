@@ -1,8 +1,9 @@
 import torch as th
 import numpy as np
-import matplotlib.pyplot as plt
 import pylab as pl
 from IPython import display
+import matplotlib.pyplot as plt
+
 from environments.environment import Environment
 
 class Experiment:

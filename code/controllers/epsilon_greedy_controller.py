@@ -1,5 +1,6 @@
 import math
 import torch as th
+
 from controllers.controller import Controller
 
 class EpsilonGreedyController:

@@ -1,5 +1,5 @@
-import os
 import torch as th
+
 from environments.environment import Environment
 from generators.tsp_generator import TSPGenerator
 

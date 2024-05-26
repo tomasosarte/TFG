@@ -1,8 +1,6 @@
 import torch as th
 from threading import Lock
 
-from torch.nn.modules import Module
-
 class Controller:
     """
     Abstract class of a controller .

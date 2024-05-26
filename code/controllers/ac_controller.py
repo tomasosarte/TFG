@@ -1,8 +1,7 @@
 import torch as th
 from threading import Lock
-from controllers.controller import Controller
 
-from torch.nn.modules import Module
+from controllers.controller import Controller
 
 class ActorCriticController(Controller):
     """

@@ -1,20 +1,22 @@
-from torch.nn.modules import Module
-from controllers.epsilon_greedy_controller import EpsilonGreedyController
-from experiments.experiment import Experiment
-from controllers.ac_controller import ActorCriticController 
-from learners.reinforce_learner import ReinforceLearner
-from runners.runner import Runner
-from environments.environment import Environment
-from utils.transition_batch import TransitionBatch
-import numpy as np
-from runners.multi_runner import MultiRunner
-import matplotlib.pyplot as plt
-import torch as th
-from IPython.display import display, clear_output
+import wandb
 import pylab as pl
+import torch as th
+import numpy as np
 from tqdm import tqdm
 from IPython import display
-import wandb
+import matplotlib.pyplot as plt
+from torch.nn.modules import Module
+from IPython.display import display, clear_output
+
+
+from runners.runner import Runner
+from runners.multi_runner import MultiRunner
+from experiments.experiment import Experiment
+from environments.environment import Environment
+from utils.transition_batch import TransitionBatch
+from learners.reinforce_learner import ReinforceLearner
+from controllers.ac_controller import ActorCriticController 
+from controllers.epsilon_greedy_controller import EpsilonGreedyController
 
 class ActorCriticExperiment(Experiment):
     """
