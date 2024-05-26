@@ -347,9 +347,9 @@ class NewTransformer(th.nn.Module):
 
         # State encoding
         state_embedding = th.cat((embedded_first_cities, embedded_current_cities, mean.unsqueeze(1), std.unsqueeze(1), embedded_cities), dim=1)
-        # decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
+        decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
         
-        return self.decoder(state_embedding, visited_mask)
+        return self.decoder(decoder_input)
        
     
 if __name__ == "__main__":
