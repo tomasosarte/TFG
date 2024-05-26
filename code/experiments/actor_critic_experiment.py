@@ -48,7 +48,7 @@ class ActorCriticExperiment(Experiment):
         self.learner = learner
         self.learner.set_controller(self.controller)
         
-    def run(self) -> None:
+    def run(self) -> tuple:
         """
         Overriding the run method to perform online actor-critic training.
 
@@ -56,7 +56,7 @@ class ActorCriticExperiment(Experiment):
             None
         
         Returns:
-            None
+            tuple: Tuple containing the episode returns, episode lengths, episode losses, and environment steps.
         """
         # Plot past results if available
         if self.plot_frequency is not None and len(self.episode_losses) > 2:
@@ -227,7 +227,7 @@ class ActorCriticExperiment(Experiment):
             total_gap += gap
 
         avg_gap = total_gap / num_episodes
-        return avg_gap
+        return round(avg_gap, 2)
             
 
 
