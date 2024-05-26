@@ -827,7 +827,6 @@ def test_jupyter():
     # Run the experiment
     experiment.run()
 
-
 if __name__ == '__main__':
     print("Running tests...")
 
@@ -843,12 +842,3 @@ if __name__ == '__main__':
     # test_ac_experiment()
     # test_jupyter()
     # test_basic_network()
-
-    ten = th.tensor([-53.3782,  -3.9628,  21.6538,  61.6173,  43.9376, -43.5235, -22.7182,
-          15.5513, -60.4999, -42.7270])
-    # Normalize
-    ten = th.nn.functional.normalize(ten, p=2, dim=0)
-
-    softmax = th.nn.functional.softmax(ten,dim=0)
-
-    print(softmax[6])

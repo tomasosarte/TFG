@@ -168,6 +168,8 @@ class ActorCriticExperiment(Experiment):
         # Plot the tour
         self.plot_tour(cities, actions, num_cities)
 
+        print(f"Tour distance: {self.calculate_tour_distance(cities, actions, num_cities)}")
+
     def calculate_tour_distance(self, cities: th.Tensor, tour: th.Tensor, num_cities: int) -> float:
         """
         Calculate the distance of the tour.
