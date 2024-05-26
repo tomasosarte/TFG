@@ -8,7 +8,7 @@ class EnviornmentTSP(Environment):
     This class is used to represent the enviornment of a TSP instance.
     """
 
-    def __init__(self, cities: th.Tensor = None, params: dict = {}):
+    def __init__(self, cities: th.Tensor = None, params: dict = {}) -> None:
         """
         Constructor for the TSP environment class.
         
@@ -43,7 +43,17 @@ class EnviornmentTSP(Environment):
         self._form_state()
         self.distance_matrix = self._get_distance_matrix()
         
-    def _get_new_cities(self) -> th.Tensor:     
+    def _get_new_cities(self) -> th.Tensor:  
+        """
+        Generates a new set of cities for the TSP instance or loads a set from the training set
+        depending on the configuration.
+
+        Args: 
+            None
+        
+        Returns:
+            th.Tensor: A tensor representing the cities in the TSP instance.
+        """   
         size = self.max_nodes_per_graph
         if self.diff_sizes: size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]    
         if self.use_training_set:
@@ -51,8 +61,16 @@ class EnviornmentTSP(Environment):
             return th.load(f"training/tsp/size_{size}/instance_{instance}.pt")    
         else: return self.train_generator.generate_instance(size)    
         
-    
     def _get_distance_matrix(self) -> th.Tensor:
+        """
+        Returns the distance matrix for the cities in the TSP instance.
+
+        Args:
+            None
+        
+        Returns:
+            th.Tensor: A tensor representing the distance matrix for the cities in the TSP instance.
+        """
         distance_matrix = th.zeros((self.n_cities, self.n_cities))
         for i in range(self.n_cities):
             for j in range(self.n_cities):
@@ -60,6 +78,15 @@ class EnviornmentTSP(Environment):
         return distance_matrix
 
     def _form_state(self) -> th.Tensor:
+        """
+        Forms the state of the environment.
+
+        Args:
+            None
+
+        Returns:
+            th.Tensor: A tensor representing the state of the environment.
+        """
         # Init_vars
         self.n_cities = self.cities.shape[0]
         visited_cities = th.zeros(self.n_cities)
@@ -79,7 +106,7 @@ class EnviornmentTSP(Environment):
         self.state = th.cat((th.tensor([self.n_cities]), first_city, current_city, previous_city, visited_cities, flat_cities)).unsqueeze(0)
         self.state_shape = (4 + self.max_nodes_per_graph + self.max_nodes_per_graph*self.node_dimension,)
     
-    def _reward(self, city1: int, city2: int):
+    def _reward(self, city1: int, city2: int) -> float:
         """
         Calculates the reward for moving from city1 to city2.
         
@@ -94,7 +121,7 @@ class EnviornmentTSP(Environment):
         distance = self.distance_matrix[city1][city2]
         return -distance
     
-    def _get_state(self):
+    def _get_state(self) -> th.Tensor:
         """
         Returns the current state of the environment.
         

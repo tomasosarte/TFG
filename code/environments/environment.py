@@ -69,5 +69,4 @@ class Environment:
         Returns:
             None
         """
-        
         pass
