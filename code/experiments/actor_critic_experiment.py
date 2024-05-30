@@ -41,7 +41,8 @@ class ActorCriticExperiment(Experiment):
         self.grad_repeats = params.get('grad_repeats', 1)
         self.batch_size = params.get('batch_size', 1024)
         self.controller = ActorCriticController(model, params)
-        self.controller = EpsilonGreedyController(controller=self.controller, params=params)
+        if params.get('use_epsilon_greedy', True):
+            self.controller = EpsilonGreedyController(controller=self.controller, params=params)
         self.env = env
         self.runner = MultiRunner(self.controller, env=env, params=params) if params.get('multi_runner', True) \
                       else Runner(self.controller, env=env, params=params)
@@ -75,7 +76,7 @@ class ActorCriticExperiment(Experiment):
                 self.episode_returns.append(batch['episode_reward'])
                 
             # Make a gradient update step
-            loss = self.learner.train(batch['buffer'])
+            loss = self.learner.train(batch=batch['buffer'], episode=episode)
             self.episode_losses.append(loss)
             if self.wandb: 
                 wandb.log({'episode_return': batch['episode_reward'], 'episode_length': batch['episode_length'], 'loss': loss})

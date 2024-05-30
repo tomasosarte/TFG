@@ -36,6 +36,11 @@ def default_params():
             'epsilon_decay': 'linear',        # either 'linear' or 'exponential'
             'entropy_weight': 0.1,            # weight of the entropy term in the loss
             'entropy_regularization': True,   # whether entropy regularization is used
+            'use_epsilon_greedy': True,       # whether epsilon-greedy is used
+            'decay_entropy': False,           # whether the entropy weight is decayed
+            'entropy_weight_start': 0.1,      # initial entropy weight
+            'entropy_weight_end': 0.01,       # final entropy weight
+            'entropy_anneal_time': 1E6,       # annealing time of the entropy weight
 
             # Optimization parameters
             'lr': 5E-4,                       # learning rate of optimizer

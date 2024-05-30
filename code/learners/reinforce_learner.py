@@ -33,6 +33,11 @@ class ReinforceLearner:
         # Entropy regularization
         self.entropy_weight = params.get('entropy_weight', 0.01)
         self.entropy_regularization = params.get('entropy_regularization', False)
+        self.decay_entropy = params.get('decay_entropy', False)
+        self.entropy_weight_start = params.get('entropy_weight_start', 0.1)
+        self.entropy_weight_end = params.get('entropy_weight_end', 0.01)
+        self.entropy_anneal_time = params.get('entropy_anneal_time', 1E6)
+        self.episode = 0
 
     def set_controller(self, controller: Controller) -> None:
         """
@@ -87,16 +92,32 @@ class ReinforceLearner:
         """
         return -(advantages.detach() * pi.log()).mean()
 
-    def train(self, batch: dict) -> float:
+    def _new_entropy_weight(self) -> None:
+        """
+        Updates the entropy weight.
+        
+        Args:
+            None
+        
+        Returns:
+            None
+        """
+        decay_factor = max(1 - self.episode / (self.entropy_anneal_time - 1), 0)
+        self.entropy_weight = decay_factor * (self.entropy_weight_start - self.entropy_weight_end) + self.entropy_weight_end
+
+    def train(self, batch: dict, episode: int) -> float:
         """
         Trains the model using the batch of data.
 
         Args:
             batch: Batch of data.
+            episode: Episode number.
         
         Returns:
             loss_sum: Sum of the loss.
         """
+        self.episode = episode
+        if self.decay_entropy: self._new_entropy_weight()
         assert self.controller is not None, "Before train() is called, a controller must be specified. "
         # Set the model to training mode and old policy to None.
         self.model.train(True)
@@ -116,7 +137,7 @@ class ReinforceLearner:
 
             # Add entropy regularization
             if self.entropy_regularization: 
-                entropy_loss = (pi * pi.log()).sum(dim=1).mean()
+                entropy_loss = -(pi * pi.log()).sum(dim=1).mean()
                 loss -= self.entropy_weight * entropy_loss
                 
             # Backpropagate loss

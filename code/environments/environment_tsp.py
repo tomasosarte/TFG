@@ -172,7 +172,9 @@ class EnviornmentTSP(Environment):
         # Save current state
         self.lock.acquire()
         try:
+            # print("Action: ", action)
             state = self._get_state() 
+            # print("State visited cities: ", self.state[0][4:4+self.n_cities])
             if self.state[0][1] == -1:
                 assert self.state[0][4+action] == 0, "The city has already been visited"
                 self.state[0][1] = action # first city == action
