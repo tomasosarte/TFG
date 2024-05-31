@@ -22,6 +22,18 @@ class Environment:
         self.max_episode_length = 0
         self.state_shape = None
 
+    def copy(self) -> 'Environment':
+        """
+        Returns a copy of the environment.
+
+        Args:
+            None
+        
+        Returns:
+            Environment: A copy of the environment.
+        """
+        pass
+    
     def _reward(self, current_city: int, previous_city: int) -> float:
         """
         Returns the reward for visiting the current city from the previous city.

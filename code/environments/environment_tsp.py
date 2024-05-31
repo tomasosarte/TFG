@@ -8,7 +8,7 @@ class EnviornmentTSP(Environment):
     This class is used to represent the enviornment of a TSP instance.
     """
 
-    def __init__(self, cities: th.Tensor = None, params: dict = {}) -> None:
+    def __init__(self, params: dict = {}) -> None:
         """
         Constructor for the TSP environment class.
         
@@ -21,28 +21,32 @@ class EnviornmentTSP(Environment):
             None
         """
         super().__init__()
-
+        self.params = params
         self.symbol = th.ones(1, dtype=th.float32)*(-1)
-
         self.node_dimension = 2
         self.max_nodes_per_graph = params.get('max_nodes_per_graph', 10)
         self.diff_sizes = params.get('diff_sizes', False)
         self.num_train_instance_per_size = params.get('num_train_instance_per_size', 10)
         self.training_sizes = params.get('training_sizes', [self.max_nodes_per_graph])
         self.use_training_set = params.get('use_training_set', True)
-        if not self.use_training_set:
-            self.train_generator = TSPGenerator()
-
-        if cities == None:
-            self.diff_cities = True
-            self.cities = self._get_new_cities()
-        else:
-            self.diff_cities = False
-            self.cities = cities
-
+        self.diff_cities = params.get('diff_cities', False)       
+        self.train_generator = TSPGenerator()
+        self.cities = self._get_new_cities()
         self._form_state()
         self.distance_matrix = self._get_distance_matrix()
+    
+    def copy(self):
+        """
+        Copies the environment.
+
+        Args:
+            None
         
+        Returns:
+            EnvironmentTSP: A copy of the environment.
+        """
+        return EnviornmentTSP(self.params)
+    
     def _get_new_cities(self) -> th.Tensor:  
         """
         Generates a new set of cities for the TSP instance or loads a set from the training set
@@ -54,13 +58,16 @@ class EnviornmentTSP(Environment):
         Returns:
             th.Tensor: A tensor representing the cities in the TSP instance.
         """   
-        size = self.max_nodes_per_graph
-        if self.diff_sizes: size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]    
-        if self.use_training_set:
-            instance = th.randint(0, self.num_train_instance_per_size, (1,)).item()
-            return th.load(f"training/tsp/size_{size}/instance_{instance}.pt")    
-        else: return self.train_generator.generate_instance(size)    
-        
+        if self.diff_cities:
+            size = self.max_nodes_per_graph
+            if self.diff_sizes: 
+                size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]    
+            if self.use_training_set:
+                instance = th.randint(0, self.num_train_instance_per_size, (1,)).item()
+                return th.load(f"training/tsp/size_{size}/instance_{instance}.pt").clone().detach() 
+            else: return self.train_generator.generate_instance(size)
+        else: return self.params.get('cities', None).clone().detach()
+                 
     def _get_distance_matrix(self) -> th.Tensor:
         """
         Returns the distance matrix for the cities in the TSP instance.
@@ -131,7 +138,7 @@ class EnviornmentTSP(Environment):
         Returns:
             th.Tensor: A tensor representing the state of the environment.
         """
-        return self.state.clone()
+        return self.state.clone().detach()
     
     def reset(self) -> dict:
         """

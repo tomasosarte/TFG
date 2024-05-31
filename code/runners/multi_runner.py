@@ -23,7 +23,7 @@ class MultiRunner:
         self.runners = []
         n = params.get('parallel_environments', 1)
         for _ in range(n):
-            self.runners.append(Runner(controller=controller, env=env, params=params))
+            self.runners.append(Runner(controller=controller, env=env.copy(), params=params))
             
     def transition_format(self) -> dict:
         """ 

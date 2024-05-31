@@ -1,3 +1,4 @@
+import json
 import wandb
 import torch as th
 import numpy as np
@@ -17,6 +18,7 @@ from utils.transition_batch import TransitionBatch
 from learners.reinforce_learner import ReinforceLearner
 from controllers.ac_controller import ActorCriticController 
 from controllers.epsilon_greedy_controller import EpsilonGreedyController
+from controllers.greedy_controller import GreedyController
 
 class ActorCriticExperiment(Experiment):
     """
@@ -48,7 +50,10 @@ class ActorCriticExperiment(Experiment):
                       else Runner(self.controller, env=env, params=params)
         self.learner = learner
         self.learner.set_controller(self.controller)
-        
+        # -------------------------------------------
+        self.model = model
+        self.params = params
+
     def run(self) -> tuple:
         """
         Overriding the run method to perform online actor-critic training.
@@ -96,7 +101,12 @@ class ActorCriticExperiment(Experiment):
         # Plot the final results
         if self.final_plot:
             self.plot_training(update=False)
-        
+
+        # Save model and params
+        th.save(self.model.state_dict(), "./Models/model.pth")
+        with open('./Models/params.json', 'w') as archive:
+            json.dump(self.params, archive, indent=4)
+
         return self.episode_returns, self.episode_lengths, self.episode_losses, self.env_steps
 
     def plot_tour(self, cities: th.Tensor, tour: th.Tensor, num_cities: int) -> None:
@@ -192,9 +202,9 @@ class ActorCriticExperiment(Experiment):
             distance += (dx**2 + dy**2)**0.5
         return distance.item()
     
-    def compare_vs_baseline(self, num_episodes: int = 10) -> float:
+    def compare_vs_baseline_greedy_rollout(self, num_episodes: int = 10) -> float:
         """
-        Compare the model's performance against the optimal solution.
+        Compare the model's performance against the optimal solution with greedy controller.
 
         Args:
             num_episodes: Number of episodes to run.
@@ -204,9 +214,11 @@ class ActorCriticExperiment(Experiment):
         """
 
         total_gap = 0.0
+        greedy_controller = GreedyController(model=self.model, params=self.params)
+        runner = Runner(controller=greedy_controller, env=self.env, params=self.params)
         for _ in range(num_episodes):
             # Run the episode
-            batch = self.runner.run_episode()
+            batch = runner.run_episode()
             states = batch['buffer']['states'].cpu()
             actions = batch['buffer']['actions'].cpu()
 
