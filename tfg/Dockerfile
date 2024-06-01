@@ -7,21 +7,21 @@ WORKDIR /usr/src/app
 # Copy the local directory contents to the container
 COPY . .
 
-# Install Python and pip
-RUN apt-get update && apt-get install -y python3 python3-pip
+# Install Python 3.10 and pip
+RUN apt-get update; \
+    apt-get install python3.11; \
+    apt-get install -y python3-pip;
 
 # Install Poetry
-ARG POETRY_VERSION=1.7.1
-RUN curl -sSL https://install.python-poetry.org | python3 - --version $POETRY_VERSION
-   
-# Set Poetry configuration: Do not create a virtual environment
-ENV POETRY_VIRTUALENVS_CREATE=false
+RUN pip3 install poetry
 
-# Install dependencies using Poetry. Exclude development dependencies if not needed
-RUN poetry install --no-root
+# Configure Poetry and install dependencies
+RUN poetry config virtualenvs.create false; \
+    poetry env use python3.11; \
+    poetry install --no-root;
 
 # Expose the port the app runs on
 EXPOSE 80
 
 # Command to run on container start
-CMD ["python3", "tfg/run.py"]
+CMD ["python3.10", "tfg/run.py"]
