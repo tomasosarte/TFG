@@ -64,9 +64,9 @@ class EnviornmentTSP(Environment):
                 size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]    
             if self.use_training_set:
                 instance = th.randint(0, self.num_train_instance_per_size, (1,)).item()
-                return th.load(f"training/tsp/size_{size}/instance_{instance}.pt").clone().detach() 
+                return th.load(f"training/tsp/size_{size}/instance_{instance}.pt").clone() 
             else: return self.train_generator.generate_instance(size)
-        else: return self.params.get('cities', None).clone().detach()
+        else: return self.params.get('cities', None).clone()
                  
     def _get_distance_matrix(self) -> th.Tensor:
         """
@@ -138,7 +138,7 @@ class EnviornmentTSP(Environment):
         Returns:
             th.Tensor: A tensor representing the state of the environment.
         """
-        return self.state.clone().detach()
+        return self.state.clone()
     
     def reset(self) -> dict:
         """

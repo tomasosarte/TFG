@@ -21,7 +21,7 @@
     "num_train_instance_per_size": 10,
     "max_episodes": 1500,
     "max_steps": 825000,
-    "multi_runner": false,
+    "multi_runner": true,
     "parallel_environments": 4,
     "epsilon_anneal_time": 660000.0,
     "epsilon_finish": 1e-05,
@@ -55,7 +55,7 @@
     "normalization": "batch",
     "feed_forward_hidden": 512,
     "embed_dim": 4,
-    "device": "cpu",
+    "device": "cuda",
     "use_tqdm": false,
     "final_plot": false,
     "wandb": false
