@@ -224,7 +224,7 @@ class ActorCriticExperiment(Experiment):
 
             # Get the cities
             num_cities = int(states[0][0].item())
-            init_cities = 4 + self.runner.max_nodes_per_graph
+            init_cities = 4 + self.params['max_nodes_per_graph']
             cities = states[0, init_cities:].reshape(-1, 2)
             cities = cities[:num_cities]
 
