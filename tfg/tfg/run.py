@@ -123,5 +123,5 @@ episode_returns, episode_lengths, episode_losses, env_steps = experiment.run()
 
 if params['wandb']: wandb.finish()
 
-avg_gap = experiment.compare_vs_baseline(num_episodes=100)
+avg_gap = experiment.compare_vs_baseline_greedy_rollout(num_episodes=100)
 print(f"Average gap: {avg_gap}%")

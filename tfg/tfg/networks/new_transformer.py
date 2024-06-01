@@ -301,7 +301,8 @@ class NewTransformer(th.nn.Module):
             embed_dim=params.get("embedding_dimension", 128),
             n_layers=params.get("num_encoder_layers", 3),
             normalization=params.get("normalization", 'batch'),
-            feed_forward_hidden=params.get("feed_forward_hidden", 512)
+            feed_forward_hidden=params.get("feed_forward_hidden", 512),
+            node_dim=self.node_dim
         )
 
         self.input_size = (self.max_nodes_per_graph + 5) * params.get("embedding_dimension", 4) + self.max_nodes_per_graph
