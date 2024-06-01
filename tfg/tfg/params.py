@@ -43,7 +43,7 @@ def default_params():
             'entropy_anneal_time': 1E6,       # annealing time of the entropy weight
 
             # Optimization parameters
-            'lr': 5E-4,                       # learning rate of optimizer
+            'lr': 1E-4,                       # learning rate of optimizer
             'gamma': 0.99,                    # discount factor gamma
             'batch_size': 100,                # number of transitions in a mini-batch. If 0, the batch size it the legth of an episode
             'grad_norm_clip': 1,              # gradient clipping if grad norm is larger than this value
@@ -60,16 +60,11 @@ def default_params():
             'ppo_clip_eps': 0.1,              # the epsilon for the PPO loss
 
             # Network parameters
-            'embedding_dimension': 4,         # dimension of the node embeddings
-            'encoder_layers': 6,              # number of layers in the encoder
-            'model_dimension': 512,           # dimension of the model
-            'dimension_k': 64,                # dimension of the key and query vectors
-            'dimension_v': 64,                # dimension of the value vectors
-            'num_heads': 4,                   # number of heads in the multihead attention
-            'num_layers': 3,                  # number of layers in the model
+            'embedding_dimension': 128,       # dimension of the node embeddings
+            'num_encoder_layers': 6,          # number of layers in the encoder
+            'num_heads': 8,                   # number of heads in the multihead attention
             'normalization': 'batch',         # either 'batch' or 'layer' normalization
             'feed_forward_hidden': 512,       # dimension of the hidden layer in the feed forward network
-            'embed_dim': 4,                   # dimension of the embeddings
 
             # Device
             'device': 'cpu',                  # device used for training
@@ -77,15 +72,3 @@ def default_params():
             'final_plot': False,              # whether to plot the final results
             'wandb': False                    # whether to use wandb for logging
            }
-
-def set_tsp_params(params, max_nodes_per_graph, embedding_dimension, max_episodes, episodes_in_batch):
-    """ Sets the parameters for the TSP problem. """
-    params['problem'] = 'tsp'
-    params['max_nodes_per_graph'] = max_nodes_per_graph
-    params['node_dimension'] = 2
-    params['embedding_dimension'] = embedding_dimension
-    params['max_episode_length'] = max_nodes_per_graph + 1
-    params['batch_size'] = (max_nodes_per_graph + 1)*episodes_in_batch
-    params['max_episodes'] = max_episodes
-    params['max_steps'] = max_episodes * max_nodes_per_graph
-    return params

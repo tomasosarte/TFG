@@ -113,8 +113,8 @@ if __name__ == "__main__":
     generator = TSPGenerator()
 
     # Generate a batch set 
-    list_of_n_cities = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
-    n_instances = 10
+    list_of_n_cities = [i for i in range(1, 101)]
+    n_instances = 100
     dataset = generator.generate_batch_set(n_instances = n_instances, list_n_cities = list_of_n_cities)
 
     # Save the dataset

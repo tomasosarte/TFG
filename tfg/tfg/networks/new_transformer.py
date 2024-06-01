@@ -288,21 +288,23 @@ class NewTransformer(th.nn.Module):
         # Params
         self.max_nodes_per_graph = params.get("max_nodes_per_graph", 20)
         self.node_dim = params.get("node_dimension", 2)
-        self.embed_dim = params.get("embed_dim", 4)
 
         # Symbol
         self.symbol = th.ones(1, self.node_dim, dtype=th.float32)*(-1)
+        
+        # Init embedding
+        self.init_embed = th.nn.Linear(self.node_dim, params.get("embedding_dimension", 128))
 
+        # Graph encoding
         self.graph_encoder = GraphAttentionEncoder(
-            n_heads=params.get("n_heads", 4),
-            embed_dim=self.embed_dim,
-            n_layers=params.get("n_layers", 3),
-            node_dim=self.node_dim,
+            n_heads=params.get("num_heads", 8),
+            embed_dim=params.get("embedding_dimension", 128),
+            n_layers=params.get("num_encoder_layers", 3),
             normalization=params.get("normalization", 'batch'),
             feed_forward_hidden=params.get("feed_forward_hidden", 512)
         )
 
-        self.input_size = (self.max_nodes_per_graph + 5) * self.embed_dim + self.max_nodes_per_graph
+        self.input_size = (self.max_nodes_per_graph + 5) * params.get("embedding_dimension", 4) + self.max_nodes_per_graph
         self.output_size = self.max_nodes_per_graph + 1
         self.decoder = th.nn.Sequential(
             th.nn.Linear(self.input_size, 128),
@@ -317,6 +319,7 @@ class NewTransformer(th.nn.Module):
 
     def forward(self, states: th.Tensor) -> th.Tensor:
 
+        # Data
         num_instances = states.shape[0]
 
         # Get cities
@@ -329,7 +332,7 @@ class NewTransformer(th.nn.Module):
         visited_mask = states[:, 4:4+self.max_nodes_per_graph]
 
         # Get graph encoding
-        embedded_cities, mean, std = self.graph_encoder(cities, mask=None)
+        embedded_cities, mean, std = self.graph_encoder(self.init_embed(cities), mask=None)
 
         # Get first & previous cities
         first_cities_idx = (states[:, 1] + 1).type(th.int64)
