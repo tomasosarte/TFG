@@ -12,8 +12,8 @@ from experiments.actor_critic_experiment import ActorCriticExperiment
 # -------------------------------------------------------------------
 
 # -------------------------- MODELS ---------------------------------
-from networks.more_basic_net import MoreBasicNetwork
-from networks.new_transformer import NewTransformer
+from tfg.networks.simple_decoder import MoreBasicNetwork
+from tfg.networks.attention_encoder_decoder import NewTransformer
 # -------------------------------------------------------------------
 
 # ------------------------- CONTROLLERS -----------------------------

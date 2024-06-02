@@ -5,8 +5,8 @@ from controllers.greedy_controller import GreedyController
 from networks.transformer import Transformer
 from utils.transition_batch import TransitionBatch
 from environments.environment_tsp import EnviornmentTSP
-from networks.basic_network import BasicNetwork
-from networks.more_basic_net import MoreBasicNetwork
+from tfg.networks.elaborated_decoder import BasicNetwork
+from tfg.networks.simple_decoder import MoreBasicNetwork
 from generators.tsp_generator import TSPGenerator
 from controllers.ac_controller import ActorCriticController
 from controllers.epsilon_greedy_controller import EpsilonGreedyController

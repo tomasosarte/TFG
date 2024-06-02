@@ -1,7 +1,7 @@
 import torch as th
 import torch.nn as nn
 
-class MoreBasicNetwork(nn.Module):
+class SimpleDecoder(nn.Module):
 
     def __init__(self, params: dict = {}) -> None:
         """
@@ -15,7 +15,7 @@ class MoreBasicNetwork(nn.Module):
         Returns:
             None
         """
-        super(MoreBasicNetwork, self).__init__()
+        super(SimpleDecoder, self).__init__()
 
         self.max_nodes_per_graph = params.get("max_nodes_per_graph", 10)
         self.node_dimension = params.get("node_dimension", 2)

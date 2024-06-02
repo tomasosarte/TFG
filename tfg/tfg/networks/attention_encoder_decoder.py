@@ -251,12 +251,12 @@ class AttentionDecoder(th.nn.Module):
             th.nn.LayerNorm(self.output_size),
         )
 
-    def forward(self, x: th.Tensor, visited_mask: th.Tensor) -> th.Tensor:
+    def forward(self, state_encoding: th.Tensor, visited_mask: th.Tensor) -> th.Tensor:
         """
         Forward pass of the network.
 
         Args:
-            x (th.Tensor): The input tensor.
+            state_encoding (th.Tensor): The state encoding tensor.
             visited_mask (th.Tensor): The visited mask tensor.
         
         Returns:
@@ -264,14 +264,18 @@ class AttentionDecoder(th.nn.Module):
         """
 
         # Attention layer
-        attention_output = self.attention(x)
+        attention_output = self.attention(state_encoding)
+
+        print("State encoding: \n", state_encoding.shape)
 
         # Decoder
-        decoder_input = th.cat((attention_output.view(x.shape[0], -1), visited_mask), dim=1)
+        decoder_input = th.cat((attention_output.view(state_encoding.shape[0], -1), 
+                                state_encoding.view(state_encoding.shape[0], -1),
+                                visited_mask), dim=1)
 
         return self.decoder(decoder_input)
         
-class NewTransformer(th.nn.Module):
+class HeavyAttentionEncoderDecoder(th.nn.Module):
 
     def __init__(self, params: dict = {}) -> None:
         """
@@ -283,7 +287,83 @@ class NewTransformer(th.nn.Module):
         Returns:
             None
         """
-        super(NewTransformer, self).__init__()
+        super(HeavyAttentionEncoderDecoder, self).__init__()
+
+        # Params
+        self.max_nodes_per_graph = params.get("max_nodes_per_graph", 20)
+        self.node_dim = params.get("node_dimension", 2)
+        self.init_cities = 4 + self.max_nodes_per_graph
+        self.end_cities = self.init_cities + self.max_nodes_per_graph*self.node_dim
+
+        # Symbol
+        self.symbol = th.ones(1, self.node_dim, dtype=th.float32)*(-1)
+        
+        # Init embedding
+        self.init_embed = th.nn.Linear(self.node_dim, params.get("embedding_dimension", 128))
+
+        # Graph encoding
+        self.graph_encoder = GraphAttentionEncoder(
+            n_heads=params.get("n_heads", 8),
+            embed_dim=params.get("embedding_dimension", 128),
+            n_layers=params.get("n_layers", 3),
+            # node_dim=self.node_dim,
+            normalization=params.get("normalization", 'batch'),
+            feed_forward_hidden=params.get("feed_forward_hidden", 512),
+        )
+
+        self.input_size = 2 * (self.max_nodes_per_graph + 5) * params.get("embedding_dimension", 128) + self.max_nodes_per_graph
+        self.output_size = self.max_nodes_per_graph + 1
+        self.decoder = AttentionDecoder(
+            input_size=self.input_size,
+            output_size=self.output_size,
+            n_heads=params.get("n_heads", 8),
+            embed_dim=params.get("embedding_dimension", 128),
+            feed_forward_hidden=params.get("feed_forward_hidden", 512),
+        )
+
+    def forward(self, states: th.Tensor) -> th.Tensor:
+
+        num_instances = states.shape[0]
+
+        # Get cities
+        cities = states[:, self.init_cities:self.end_cities].reshape(num_instances, self.max_nodes_per_graph, self.node_dim)
+        cities = th.cat((self.symbol.expand(num_instances, 1, self.node_dim), cities), dim=1)
+
+        # Get visited mask
+        visited_mask = states[:, 4:4+self.max_nodes_per_graph]
+
+        # Get graph encoding
+        embedded_cities, mean, std = self.graph_encoder(self.init_embed(cities), mask=None)
+
+        # Get first & previous cities
+        first_cities_idx = (states[:, 1] + 1).long()
+        current_cities_idx = (states[:, 2] + 1).long()
+        embedded_first_cities = embedded_cities[th.arange(num_instances), first_cities_idx]
+        embedded_current_cities = embedded_cities[th.arange(num_instances), current_cities_idx]
+
+        # State encoding
+        state_embedding = th.cat((embedded_first_cities.unsqueeze(1), 
+                                embedded_current_cities.unsqueeze(1), 
+                                mean.unsqueeze(1), 
+                                std.unsqueeze(1), 
+                                embedded_cities), dim=1)
+        # decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
+        
+        return self.decoder(state_embedding, visited_mask)
+
+class LightAttentionEncoderDecoder(th.nn.Module):
+
+    def __init__(self, params: dict = {}) -> None:
+        """
+        Constructor for the BasicNetwork class. This class is used to represent the network that will be used to solve NP-HARD problems.
+
+        Args:
+            params (dict): A dictionary containing the parameters for the network.
+        
+        Returns:
+            None
+        """
+        super(LightAttentionEncoderDecoder, self).__init__()
 
         # Params
         self.max_nodes_per_graph = params.get("max_nodes_per_graph", 20)
@@ -345,11 +425,10 @@ class NewTransformer(th.nn.Module):
         decoder_input = th.cat((state_embedding.view(num_instances, -1), visited_mask), dim=1)
         
         return self.decoder(decoder_input)
-       
-   
+    
 if __name__ == "__main__":
 
-    model = NewTransformer()
+    model = LightAttentionEncoderDecoder()
     padding = th.ones(10, 2)*(-1)
 
     # Get cities
@@ -371,9 +450,11 @@ if __name__ == "__main__":
 
     # Get batch of states
     states = th.cat((metadata, visited_cities, all_cities), dim=1)
-    
+    # print("States: \n", states.shape)
+
     # Forward pass
     output = model(states)
+    # print("Output: \n", output.shape)
 
     # Test MultiheadAttentionLayer with mask
     all_cities = all_cities.reshape(4, -1, 2)
@@ -396,3 +477,4 @@ if __name__ == "__main__":
     at = attention(q=all_cities, mask=mask_expanded)
     # print("Attention output with mask: \n", at[3])
     
+
