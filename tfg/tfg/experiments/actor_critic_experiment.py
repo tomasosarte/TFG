@@ -9,6 +9,7 @@ from torch.nn.modules import Module
 from IPython.display import display, clear_output
 from IPython import display
 
+from generators.tsp_generator import TSPGenerator
 from runners.runner import Runner
 from solvers.gurobi_tsp import solve_tsp
 from runners.multi_runner import MultiRunner
@@ -219,6 +220,59 @@ class ActorCriticExperiment(Experiment):
         for _ in range(num_episodes):
             # Run the episode
             batch = runner.run_episode()
+            states = batch['buffer']['states'].cpu()
+            actions = batch['buffer']['actions'].cpu()
+
+            # Get the cities
+            num_cities = int(states[0][0].item())
+            init_cities = 4 + self.params['max_nodes_per_graph']
+            cities = states[0, init_cities:].reshape(-1, 2)
+            cities = cities[:num_cities]
+
+            # Calculate the optimal solution
+            optim_tour, optim_distance = solve_tsp(cities)
+
+            # Calculate the model's solution
+            model_tour = actions[:num_cities + 1].squeeze(1).cpu()
+            model_distance = self.calculate_tour_distance(cities, model_tour, num_cities)
+
+            # Calculate the gap
+            gap = round((model_distance - optim_distance) / optim_distance * 100, 2)
+            total_gap += gap
+
+        avg_gap = total_gap / num_episodes
+        return round(avg_gap, 2)
+    
+    def compare_vs_baseline_sampling(self, num_episodes: int = 10) -> float:
+        """
+        Compare the model's performance against the optimal solution with sampling controller.
+
+        Args:
+            num_episodes: Number of episodes to run.
+        
+        Returns:
+            float: The average gap between the model's solution and the optimal solution.
+        """
+
+        total_gap = 0.0
+        tsp_generator = TSPGenerator()
+        environment_params = {
+            'cities': None,
+            'max_nodes_per_graph': self.params.get('max_nodes_per_graph', 20),
+            'diff_sizes': False,
+            'training_sizes': self.params.get('training_sizes', [self.params['max_nodes_per_graph']]),
+        }
+        num_training_size = len(environment_params['training_sizes'])
+        sampling_controller = ActorCriticController(model=self.model, params=self.params)
+        for _ in range(num_episodes):
+            idx_sampled_training_size = np.random.randint(num_training_size)
+            size = environment_params['training_sizes'][idx_sampled_training_size]
+            environment_params['cities'] = tsp_generator.generate_instance(size)
+            new_env = Environment(params=environment_params)
+            new_runner = Runner(controller=sampling_controller, env=new_env, params=self.params)
+    
+            # Run the episode
+            batch = new_runner.run_episode()
             states = batch['buffer']['states'].cpu()
             actions = batch['buffer']['actions'].cpu()
 

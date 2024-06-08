@@ -12,8 +12,9 @@ from experiments.actor_critic_experiment import ActorCriticExperiment
 # -------------------------------------------------------------------
 
 # -------------------------- MODELS ---------------------------------
-from tfg.networks.simple_decoder import MoreBasicNetwork
-from tfg.networks.attention_encoder_decoder import NewTransformer
+from networks.simple_decoder import SimpleDecoder
+from networks.attention_encoder_decoder import LightAttentionEncoderDecoder
+from networks.attention_encoder_decoder import HeavyAttentionEncoderDecoder
 # -------------------------------------------------------------------
 
 # ------------------------- CONTROLLERS -----------------------------
@@ -116,7 +117,7 @@ th.device(params['device'])
 if params['wandb']: wandb.init(project="tsp", config=params)
 
 # Run experiment
-model = NewTransformer(params=params)
+model = HeavyAttentionEncoderDecoder(params=params)
 env = EnviornmentTSP(params=params)
 experiment = ActorCriticExperiment(params, model, env, PPOLearner(model=model, params=params))
 episode_returns, episode_lengths, episode_losses, env_steps = experiment.run()

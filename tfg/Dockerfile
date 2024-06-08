@@ -6,6 +6,7 @@ WORKDIR /usr/src/app
 
 # Copy the local directory contents to the container
 COPY . .
+RUN ls -la
 
 # Install Python 3.11 and pip
 RUN apt-get update && \
