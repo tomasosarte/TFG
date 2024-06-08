@@ -34,16 +34,15 @@ class Environment:
         """
         pass
     
-    def _reward(self, current_city: int, previous_city: int) -> float:
+    def _reward(self, **kwargs) -> float:
         """
-        Returns the reward for visiting the current city from the previous city.
+        Returns the reward function from the environment.
 
         Args:
-            current_city (int): The index of the current city.
-            previous_city (int): The index of the previous city.
+            **kwargs: Additional arguments.
         
         Returns:
-            float: The reward for visiting the current city.
+            float: The reward for changing from one state to another.
         """
         pass
 
@@ -76,9 +75,12 @@ class Environment:
         Takes a step in the environment by visiting the city at the given index.
         
         Args:
-            None
+            action float: The action done in the enviornment
         
         Returns:
-            None
+            state th.Tensor: The state of the environment after taking the step.
+            reward float: The reward for taking the step.
+            done bool: A boolean indicating if the episode is done.
+            info dict: A dictionary of additional information.
         """
         pass

@@ -45,15 +45,15 @@
     "value_targets": "td",
     "ppo_clipping": true,
     "ppo_clip_eps": 0.1,
-    "embedding_dimension": 128,
+    "embedding_dimension": 4,
     "num_encoder_layers": 6,
     "num_heads": 8,
     "normalization": "batch",
     "feed_forward_hidden": 512,
-    "device": "cpu",
+    "device": "cuda",
     "use_tqdm": false,
     "final_plot": false,
     "wandb": false,
-    "n_heads": 8,
+    "n_heads": 4,
     "n_layers": 3
 }
