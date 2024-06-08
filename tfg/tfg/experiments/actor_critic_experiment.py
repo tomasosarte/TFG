@@ -203,7 +203,7 @@ class ActorCriticExperiment(Experiment):
             distance += (dx**2 + dy**2)**0.5
         return distance.item()
     
-    def compare_vs_baseline_greedy_rollout(self, num_episodes: int = 10) -> float:
+    def guroby_vs_greedy_rollout(self, num_episodes: int = 10) -> float:
         """
         Compare the model's performance against the optimal solution with greedy controller.
 
@@ -243,12 +243,13 @@ class ActorCriticExperiment(Experiment):
         avg_gap = total_gap / num_episodes
         return round(avg_gap, 2)
     
-    def compare_vs_baseline_sampling(self, num_episodes: int = 10) -> float:
+    def guroby_vs_best_sample(self, num_episodes: int = 10, runs_per_episode: int = 10) -> float:
         """
-        Compare the model's performance against the optimal solution with sampling controller.
+        Compare the model's performance against the best sampling solution.
 
         Args:
             num_episodes: Number of episodes to run.
+            runs_per_episode: Number of runs per episode.
         
         Returns:
             float: The average gap between the model's solution and the optimal solution.
@@ -265,33 +266,40 @@ class ActorCriticExperiment(Experiment):
         num_training_size = len(environment_params['training_sizes'])
         sampling_controller = ActorCriticController(model=self.model, params=self.params)
         for _ in range(num_episodes):
+
+            # --------------
             idx_sampled_training_size = np.random.randint(num_training_size)
             size = environment_params['training_sizes'][idx_sampled_training_size]
             environment_params['cities'] = tsp_generator.generate_instance(size)
             new_env = Environment(params=environment_params)
             new_runner = Runner(controller=sampling_controller, env=new_env, params=self.params)
-    
-            # Run the episode
-            batch = new_runner.run_episode()
-            states = batch['buffer']['states'].cpu()
-            actions = batch['buffer']['actions'].cpu()
-
-            # Get the cities
-            num_cities = int(states[0][0].item())
-            init_cities = 4 + self.params['max_nodes_per_graph']
-            cities = states[0, init_cities:].reshape(-1, 2)
-            cities = cities[:num_cities]
+            # --------------
 
             # Calculate the optimal solution
-            optim_tour, optim_distance = solve_tsp(cities)
+            optim_tour, optim_distance = solve_tsp(environment_params['cities'])
+            best_gap = 100.0
 
-            # Calculate the model's solution
-            model_tour = actions[:num_cities + 1].squeeze(1).cpu()
-            model_distance = self.calculate_tour_distance(cities, model_tour, num_cities)
+            for _ in range(runs_per_episode):
+                # Run the episode
+                batch = new_runner.run_episode()
+                states = batch['buffer']['states'].cpu()
+                actions = batch['buffer']['actions'].cpu()
 
-            # Calculate the gap
-            gap = round((model_distance - optim_distance) / optim_distance * 100, 2)
-            total_gap += gap
+                # Get the cities
+                num_cities = int(states[0][0].item())
+                init_cities = 4 + self.params['max_nodes_per_graph']
+                cities = states[0, init_cities:].reshape(-1, 2)
+                cities = cities[:num_cities]
+
+                # Calculate the model's solution
+                model_tour = actions[:num_cities + 1].squeeze(1).cpu()
+                model_distance = self.calculate_tour_distance(cities, model_tour, num_cities)
+
+                # Calculate the gap
+                gap = round((model_distance - optim_distance) / optim_distance * 100, 2)
+                best_gap = min(best_gap, gap)
+            
+            total_gap += best_gap
 
         avg_gap = total_gap / num_episodes
         return round(avg_gap, 2)
