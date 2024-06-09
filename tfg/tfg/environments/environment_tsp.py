@@ -25,7 +25,6 @@ class EnviornmentTSP(Environment):
         self.symbol = th.ones(1, dtype=th.float32)*(-1)
         self.node_dimension = 2
         self.max_nodes_per_graph = params.get('max_nodes_per_graph', 10)
-        self.diff_sizes = params.get('diff_sizes', False)
         self.num_train_instance_per_size = params.get('num_train_instance_per_size', 10)
         self.training_sizes = params.get('training_sizes', [self.max_nodes_per_graph])
         self.use_training_set = params.get('use_training_set', True)
@@ -59,9 +58,7 @@ class EnviornmentTSP(Environment):
             th.Tensor: A tensor representing the cities in the TSP instance.
         """   
         if self.diff_cities:
-            size = self.max_nodes_per_graph
-            if self.diff_sizes: 
-                size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]    
+            size = self.training_sizes[th.randint(0, len(self.training_sizes), (1,)).item()]    
             if self.use_training_set:
                 instance = th.randint(0, self.num_train_instance_per_size, (1,)).item()
                 return th.load(f"training/tsp/size_{size}/instance_{instance}.pt").clone() 
@@ -99,7 +96,7 @@ class EnviornmentTSP(Environment):
         visited_cities = th.zeros(self.n_cities)
         
         flat_cities = self.cities.flatten()
-        self._max_episode_steps = self.n_cities + 1
+        self.max_episode_length = self.n_cities + 1
 
         # Padding
         if self.n_cities < self.max_nodes_per_graph:

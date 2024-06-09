@@ -22,7 +22,7 @@ class Runner:
         """
         self.env = env
         self.controller = controller
-        self.epi_len = params.get('max_episode_length', self.env._max_episode_steps)
+        self.epi_len = params.get('max_episode_length', env.max_episode_length)
         self.gamma = params.get('gamma', 0.99)
         self.device = params.get('device', 'cpu')
 
@@ -49,7 +49,7 @@ class Runner:
         if done:
             self.sum_rewards = 0
             self.state = self.env.reset()
-            self.epi_len = self.env._max_episode_steps
+            self.epi_len = self.env.max_episode_length
         else: self.state = next_state
     
     def transition_format(self) -> dict:
@@ -113,7 +113,7 @@ class Runner:
             dict: A dictionary containing the buffer, the mean episode reward, the mean episode length, and the number of environment steps.
         """
         self.state = self.env.reset()
-        self.epi_len = self.env._max_episode_steps
+        self.epi_len = self.env.max_episode_length
         my_transition_buffer = TransitionBatch(n_steps if n_steps > 0 else self.epi_len, self.transition_format())
         time, episode_start, episode_lengths, episode_rewards = 0, 0, [], []
         max_steps = n_steps if n_steps > 0 else self.epi_len

@@ -7,33 +7,69 @@
     "max_episode_length": 11,
     "max_nodes_per_graph": 10,
     "node_dimension": 2,
-    "diff_sizes": true,
-    "diff_cities": true,
+    "diff_cities": false,
     "use_training_set": false,
     "training_sizes": [
-        5,
-        6,
-        7,
-        8,
-        9,
         10
     ],
     "num_train_instance_per_size": 10,
+    "cities": [
+        [
+            0.8997920155525208,
+            0.8183098435401917
+        ],
+        [
+            0.9718705415725708,
+            0.35614603757858276
+        ],
+        [
+            0.473690927028656,
+            0.173825204372406
+        ],
+        [
+            0.02642083168029785,
+            0.564545750617981
+        ],
+        [
+            0.346318781375885,
+            0.5104126334190369
+        ],
+        [
+            0.13579457998275757,
+            0.5383671522140503
+        ],
+        [
+            0.07767319679260254,
+            0.14478176832199097
+        ],
+        [
+            0.24232763051986694,
+            0.47225046157836914
+        ],
+        [
+            0.7053067088127136,
+            0.007731199264526367
+        ],
+        [
+            0.779586911201477,
+            0.9809174537658691
+        ]
+    ],
     "max_episodes": 500,
     "max_steps": 275000,
     "multi_runner": false,
     "parallel_environments": 4,
-    "epsilon_anneal_time": 220000.0,
+    "epsilon_anneal_time": 247500.0,
     "epsilon_finish": 1e-05,
     "epsilon_start": 1.0,
     "epsilon_decay": "linear",
     "entropy_weight": 0.1,
-    "entropy_regularization": true,
-    "use_epsilon_greedy": false,
-    "decay_entropy": true,
-    "entropy_weight_start": 1.0,
-    "entropy_weight_end": 0.001,
-    "entropy_anneal_time": 450.0,
+    "entropy_regularization": false,
+    "use_epsilon_greedy": true,
+    "decay_entropy": false,
+    "entropy_weight_start": 0.1,
+    "entropy_weight_end": 0.01,
+    "entropy_anneal_time": 1000000.0,
     "lr": 0.0005,
     "gamma": 0.99,
     "batch_size": 550,
@@ -45,15 +81,13 @@
     "value_targets": "td",
     "ppo_clipping": true,
     "ppo_clip_eps": 0.1,
-    "embedding_dimension": 4,
+    "embedding_dimension": 128,
     "num_encoder_layers": 6,
     "num_heads": 8,
     "normalization": "batch",
     "feed_forward_hidden": 512,
-    "device": "cuda",
+    "device": "cpu",
     "use_tqdm": false,
     "final_plot": false,
-    "wandb": false,
-    "n_heads": 4,
-    "n_layers": 3
+    "wandb": false
 }

@@ -14,11 +14,11 @@ def default_params():
             'max_episode_length': 1000,       # maximum number of steps in an episode
             'max_nodes_per_graph': 100,       # maximum number of nodes in a graph
             'node_dimension': 2,              # dimension of the node features
-            'diff_sizes': False,              # whether the graphs have different sizes in training
             'diff_cities': False,             # whether the graphs have different cities in training
             'use_training_set': True,         # whether the training set is used if diff_cities==True
             'training_sizes': [20, 50, 100],  # sizes of the training set if diff_cities==True
             'num_train_instance_per_size': 1, # number of training instances per size if diff_cities==True
+            'cities': None,                   # fixed cities for the TSP problem
             
             # Runner parameters
             'max_episodes': 1000,             # experiment stops after this many episodes
