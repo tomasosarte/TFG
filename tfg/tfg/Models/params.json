@@ -10,66 +10,69 @@
     "diff_cities": false,
     "use_training_set": false,
     "training_sizes": [
+        6,
+        7,
+        9,
         10
     ],
     "num_train_instance_per_size": 10,
     "cities": [
         [
-            0.8997920155525208,
-            0.8183098435401917
+            0.8013597726821899,
+            0.5972580909729004
         ],
         [
-            0.9718705415725708,
-            0.35614603757858276
+            0.8788772821426392,
+            0.13813531398773193
         ],
         [
-            0.473690927028656,
-            0.173825204372406
+            0.2071283459663391,
+            0.1972358226776123
         ],
         [
-            0.02642083168029785,
-            0.564545750617981
+            0.3536819815635681,
+            0.5514118075370789
         ],
         [
-            0.346318781375885,
-            0.5104126334190369
+            0.8747109174728394,
+            0.24804222583770752
         ],
         [
-            0.13579457998275757,
-            0.5383671522140503
+            0.28919053077697754,
+            0.6165710091590881
         ],
         [
-            0.07767319679260254,
-            0.14478176832199097
+            0.7266388535499573,
+            0.8824533224105835
         ],
         [
-            0.24232763051986694,
-            0.47225046157836914
+            0.5031501054763794,
+            0.2607170343399048
         ],
         [
-            0.7053067088127136,
-            0.007731199264526367
+            0.16319042444229126,
+            0.581585705280304
         ],
         [
-            0.779586911201477,
-            0.9809174537658691
+            0.7468787431716919,
+            0.6124648451805115
         ]
     ],
-    "max_episodes": 500,
-    "max_steps": 275000,
+    "max_episodes": 3000,
+    "max_steps": 1650000,
     "multi_runner": false,
-    "parallel_environments": 4,
-    "epsilon_anneal_time": 247500.0,
+    "parallel_environments": 2,
+    "epsilon_anneal_time": 1320000.0,
     "epsilon_finish": 1e-05,
     "epsilon_start": 1.0,
     "epsilon_decay": "linear",
     "entropy_weight": 0.1,
-    "entropy_regularization": false,
-    "use_epsilon_greedy": true,
-    "decay_entropy": false,
-    "entropy_weight_start": 0.1,
+    "entropy_regularization": true,
+    "use_epsilon_greedy": false,
+    "decay_entropy": true,
+    "entropy_weight_start": 1.0,
     "entropy_weight_end": 0.01,
-    "entropy_anneal_time": 1000000.0,
+    "entropy_anneal_time": 3000.0,
     "lr": 0.0005,
     "gamma": 0.99,
     "batch_size": 550,
@@ -81,7 +84,7 @@
     "value_targets": "td",
     "ppo_clipping": true,
     "ppo_clip_eps": 0.1,
-    "embedding_dimension": 128,
+    "embedding_dimension": 4,
     "num_encoder_layers": 6,
     "num_heads": 8,
     "normalization": "batch",
@@ -89,5 +92,7 @@
     "device": "cpu",
     "use_tqdm": false,
     "final_plot": false,
-    "wandb": false
+    "wandb": false,
+    "n_heads": 4,
+    "n_layers": 3
 }

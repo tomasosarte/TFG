@@ -208,13 +208,14 @@ class ActorCriticExperiment(Experiment):
             distance += (dx**2 + dy**2)**0.5
         return distance.item()
     
-    def guroby_vs_greedy_rollout(self, sizes: list, num_episodes_per_size: int = 10) -> float:
+    def guroby_vs_greedy_rollout(self, sizes: list, num_episodes_per_size: int = 10, plot: bool = True) -> float:
         """
         Compare the model's performance against the optimal solution with greedy controller.
 
         Args:
             sizes: List of sizes to test.
             num_episodes_per_size: Number of episodes per size.
+            plot: Boolean to plot the results.
         
         Returns:
             metadata: Dictionary containing the metadata of the experiment.
@@ -258,17 +259,18 @@ class ActorCriticExperiment(Experiment):
         
         metadata['avg_gap'] = round(metadata['avg_gap'] / (num_episodes_per_size * len(sizes)), 2)
 
-        # Plot metadata
-        pl.figure()
-        pl.bar(sizes, metadata['avg_gap_per_size'], align='center', alpha=0.5)
-        pl.xlabel('Size')
-        pl.ylabel('Gap (%)')
-        pl.title('Greedy Controller vs Gurobi')
-        pl.show()
+        if plot:
+            # Plot metadata
+            pl.figure()
+            pl.bar(sizes, metadata['avg_gap_per_size'], align='center', alpha=0.5)
+            pl.xlabel('Size')
+            pl.ylabel('Gap (%)')
+            pl.title('Greedy Controller vs Gurobi')
+            pl.show()
         
         return metadata
     
-    def guroby_vs_best_sample(self, sizes = list, num_episodes_per_size: int = 10, runs_per_episode: int = 10) -> float:
+    def guroby_vs_best_sample(self, sizes = list, num_episodes_per_size: int = 10, runs_per_episode: int = 10, plot: bool = True) -> float:
         """
         Compare the model's performance against the best sampling solution.
 
@@ -335,13 +337,14 @@ class ActorCriticExperiment(Experiment):
 
         metadata['avg_gap'] = round(metadata['avg_gap'] / (num_episodes_per_size * len(sizes)), 2)
 
-        # Plot metadata
-        pl.figure()
-        pl.bar(sizes, metadata['avg_gap_per_size'], align='center', alpha=0.5)
-        pl.xlabel('Size')
-        pl.ylabel('Gap (%)')
-        pl.title('Greedy Controller vs Gurobi')
-        pl.show()
+        if plot:
+            # Plot metadata
+            pl.figure()
+            pl.bar(sizes, metadata['avg_gap_per_size'], align='center', alpha=0.5)
+            pl.xlabel('Size')
+            pl.ylabel('Gap (%)')
+            pl.title('Greedy Controller vs Gurobi')
+            pl.show()
 
         return metadata
             
