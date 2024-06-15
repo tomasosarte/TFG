@@ -343,7 +343,7 @@ class ActorCriticExperiment(Experiment):
             pl.bar(sizes, metadata['avg_gap_per_size'], align='center', alpha=0.5)
             pl.xlabel('Size')
             pl.ylabel('Gap (%)')
-            pl.title('Greedy Controller vs Gurobi')
+            pl.title('Best Sample vs Gurobi')
             pl.show()
 
         return metadata
