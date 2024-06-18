@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from torch.nn.modules import Module
 from IPython.display import display, clear_output
 from IPython import display
+from tqdm import tqdm
 
 from environments.environment_tsp import EnviornmentTSP
 from generators.tsp_generator import TSPGenerator
@@ -232,8 +233,8 @@ class ActorCriticExperiment(Experiment):
         environment_params['cities'] = None
         environment_params['diff_cities'] = False
         greedy_controller = GreedyController(model=self.model, params=environment_params)
-        for size in sizes:
-                
+        for size in tqdm(sizes, desc="Processing sizes"):
+            
             size_gap = 0.0
             for _ in range(num_episodes_per_size):
                 # --------------
@@ -295,7 +296,7 @@ class ActorCriticExperiment(Experiment):
         environment_params['cities'] = None
         environment_params['diff_cities'] = False
         sampling_controller = ActorCriticController(model=self.model, params=environment_params)
-        for size in sizes:
+        for size in tqdm(sizes, desc="Processing sizes"):
             
             size_gap = 0.0
             for _ in range(num_episodes_per_size):
@@ -307,7 +308,7 @@ class ActorCriticExperiment(Experiment):
 
                 # Calculate the optimal solution
                 optim_tour, optim_distance = solve_tsp(environment_params['cities'])
-                best_gap = 100.0
+                best_gap = 100000.0
 
                 for _ in range(runs_per_episode):
                     # Run the episode

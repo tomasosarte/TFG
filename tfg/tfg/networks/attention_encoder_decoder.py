@@ -266,8 +266,6 @@ class AttentionDecoder(th.nn.Module):
         # Attention layer
         attention_output = self.attention(state_encoding)
 
-        print("State encoding: \n", state_encoding.shape)
-
         # Decoder
         decoder_input = th.cat((attention_output.view(state_encoding.shape[0], -1), 
                                 state_encoding.view(state_encoding.shape[0], -1),
