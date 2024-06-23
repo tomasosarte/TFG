@@ -1,3 +1,4 @@
+import os
 import json
 import wandb
 import torch as th
@@ -106,10 +107,11 @@ class ActorCriticExperiment(Experiment):
             self.plot_training(update=False)
 
         # Save model and params
-        th.save(self.model.state_dict(), "./Models/model.pth")
+        path = os.path.dirname(os.path.abspath(__file__))
+        th.save(self.model.state_dict(), f"{path}/../Models/model.pth")
         if self.params['cities'] is not None:
             self.params['cities'] = self.params['cities'].tolist()
-        with open('./Models/params.json', 'w') as archive:
+        with open(f'{path}/../Models/params.json', 'w') as archive:
             json.dump(self.params, archive, indent=4)
         if self.params['cities'] is not None:
             self.params['cities'] = th.tensor(self.params['cities'])

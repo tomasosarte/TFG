@@ -32,3 +32,45 @@ Demostrar coneixement i desenvolupar tècniques d'aprenentatge computacional; di
 
 CCO3.2
 Programar considerant l'arquitectura hardware, tant en asemblador com en alt nivell. [Una mica]
+
+Sequence diagram:
+
+@startuml
+actor User
+
+User -> ActorCriticExperiment: run()
+activate ActorCriticExperiment
+
+loop for each episode
+    ActorCriticExperiment -> runner: run(batch_size, transition_buffer)
+    activate runner
+    
+    loop for each step
+        runner -> controller: choose_action(state)
+        controller -> runner: action
+        runner -> env: step(action)
+        env -> runner: state, reward, done, next_state
+        runner -> runner: update transition buffer
+    end
+    
+    runner -> ActorCriticExperiment: return batch
+    deactivate runner
+    
+    ActorCriticExperiment -> ActorCriticExperiment: update data
+    
+    ActorCriticExperiment -> learner: train(batch, episode)
+    activate learner
+    
+    learner -> model: compute outputs
+    learner -> controller: compute probabilities
+    learner -> model: update model parameters
+    learner -> ActorCriticExperiment: return loss
+    deactivate learner
+    
+end
+
+ActorCriticExperiment -> User: return results
+deactivate ActorCriticExperiment
+
+@enduml
+
