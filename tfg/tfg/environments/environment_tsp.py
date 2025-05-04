@@ -69,17 +69,14 @@ class EnviornmentTSP(Environment):
         """
         Returns the distance matrix for the cities in the TSP instance.
 
-        Args:
-            None
-        
         Returns:
             th.Tensor: A tensor representing the distance matrix for the cities in the TSP instance.
         """
-        distance_matrix = th.zeros((self.n_cities, self.n_cities))
-        for i in range(self.n_cities):
-            for j in range(self.n_cities):
-                distance_matrix[i][j] = th.norm(self.cities[i] - self.cities[j])
+        # cities: (n_cities, 2)
+        diff = self.cities.unsqueeze(1) - self.cities.unsqueeze(0)  # shape: (n_cities, n_cities, 2)
+        distance_matrix = th.norm(diff, dim=2)  # Euclidean distance along the last dimension
         return distance_matrix
+
 
     def _form_state(self) -> th.Tensor:
         """
