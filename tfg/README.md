@@ -28,7 +28,7 @@ Inside the tfg folder:
 ### Getting Started
 
 #### Prerequisites
-- Python 3.x
+- Python 3.11.5 or newer
 - Poetry
 
 #### Installation
